@@ -1574,6 +1574,11 @@
                 script.onload = function() {
                     console.log('✅ EmulatorJS loader.js carregado');
                     
+                    // Iniciar captura de áudio após carregar o emulador
+                    setTimeout(() => {
+                        startAudioCapture();
+                    }, 3000);
+                    
                     // Patch leve para handleResize (não bloqueia carregamento)
                     setTimeout(() => {
                         try {
@@ -1611,6 +1616,9 @@
                     backButton.classList.remove('active');
                     mainContainer.style.display = 'block';
                     
+                    // Parar captura de áudio
+                    stopAudioCapture();
+                    
                     // Limpar emulador
                     const gameDiv = document.getElementById('game');
                     gameDiv.innerHTML = '';
@@ -1624,6 +1632,82 @@
                     // Re-selecionar o jogo atual para recarregar o background
                     selectGame(currentIndex);
                 }
+            }
+
+            // Captura de áudio
+            let audioStream = null;
+            let audioContext = null;
+            let audioProcessor = null;
+            let mediaRecorder = null;
+
+            function startAudioCapture() {
+                try {
+                    // Tentar capturar áudio do canvas/iframe do emulador
+                    const gameElement = document.querySelector('#game canvas, #game iframe');
+                    
+                    if (!gameElement) {
+                        console.log('⚠️ Elemento de jogo não encontrado para áudio');
+                        // Tentar novamente após 2 segundos
+                        setTimeout(startAudioCapture, 2000);
+                        return;
+                    }
+
+                    // Capturar stream de áudio do documento
+                    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                        navigator.mediaDevices.getDisplayMedia({ 
+                            audio: true,
+                            video: false 
+                        }).then(stream => {
+                            audioStream = stream;
+                            console.log('🎵 Captura de áudio iniciada');
+                            
+                            // Criar MediaRecorder para capturar chunks de áudio
+                            mediaRecorder = new MediaRecorder(stream, { 
+                                mimeType: 'audio/webm',
+                                audioBitsPerSecond: 128000
+                            });
+                            
+                            mediaRecorder.ondataavailable = (event) => {
+                                if (event.data.size > 0) {
+                                    // Converter para base64 e enviar via socket
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                        const base64 = reader.result.split(',')[1];
+                                        if (socket && socket.connected) {
+                                            socket.emit('game-audio', base64);
+                                        }
+                                    };
+                                    reader.readAsDataURL(event.data);
+                                }
+                            };
+                            
+                            // Capturar chunks a cada 100ms
+                            mediaRecorder.start(100);
+                            
+                        }).catch(err => {
+                            console.log('⚠️ Não foi possível capturar áudio:', err.message);
+                        });
+                    } else {
+                        console.log('⚠️ API de captura de áudio não disponível');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao iniciar captura de áudio:', error);
+                }
+            }
+
+            function stopAudioCapture() {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                    audioStream = null;
+                }
+                if (audioContext) {
+                    audioContext.close();
+                    audioContext = null;
+                }
+                console.log('🔇 Captura de áudio parada');
             }
 
             // Botão de voltar

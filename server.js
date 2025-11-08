@@ -27,6 +27,11 @@ const controllers = {
     player2: null
 };
 
+const audioListeners = {
+    player1: false,
+    player2: false
+};
+
 const screens = new Set();
 
 // Obter IP local
@@ -138,6 +143,41 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Ativar áudio no controle
+    socket.on('enable-audio', (data) => {
+        const playerNumber = data.player;
+        if (playerNumber === 1) {
+            audioListeners.player1 = true;
+            console.log(`[AUDIO] Player 1 habilitou áudio`);
+        } else if (playerNumber === 2) {
+            audioListeners.player2 = true;
+            console.log(`[AUDIO] Player 2 habilitou áudio`);
+        }
+    });
+
+    // Desativar áudio no controle
+    socket.on('disable-audio', (data) => {
+        const playerNumber = data.player;
+        if (playerNumber === 1) {
+            audioListeners.player1 = false;
+            console.log(`[AUDIO] Player 1 desabilitou áudio`);
+        } else if (playerNumber === 2) {
+            audioListeners.player2 = false;
+            console.log(`[AUDIO] Player 2 desabilitou áudio`);
+        }
+    });
+
+    // Receber stream de áudio da tela (emulador)
+    socket.on('game-audio', (audioData) => {
+        // Enviar para os controles que têm áudio habilitado
+        if (audioListeners.player1 && controllers.player1) {
+            io.to(controllers.player1).emit('audio-stream', audioData);
+        }
+        if (audioListeners.player2 && controllers.player2) {
+            io.to(controllers.player2).emit('audio-stream', audioData);
+        }
+    });
+
     // Desconexão
     socket.on('disconnect', () => {
         console.log(`[${new Date().toLocaleTimeString()}] Desconectado: ${socket.id}`);
@@ -152,12 +192,14 @@ io.on('connection', (socket) => {
         if (controllers.player1 === socket.id) {
             console.log(`[CONTROLE] Player 1 desconectado`);
             controllers.player1 = null;
+            audioListeners.player1 = false;
             screens.forEach(screenId => {
                 io.to(screenId).emit('controller-disconnected', { player: 1 });
             });
         } else if (controllers.player2 === socket.id) {
             console.log(`[CONTROLE] Player 2 desconectado`);
             controllers.player2 = null;
+            audioListeners.player2 = false;
             screens.forEach(screenId => {
                 io.to(screenId).emit('controller-disconnected', { player: 2 });
             });

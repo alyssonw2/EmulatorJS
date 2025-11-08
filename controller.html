@@ -413,6 +413,44 @@
         .error-message.show {
             display: block;
         }
+
+        /* Audio Control */
+        .audio-control {
+            position: absolute;
+            top: 8px;
+            right: 15px;
+            z-index: 100;
+        }
+
+        .audio-btn {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #5b6bc0, #3f51b5);
+            border: none;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(91, 107, 192, 0.4);
+        }
+
+        .audio-btn:active {
+            transform: scale(0.95);
+        }
+
+        .audio-btn.active {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+            }
+            50% {
+                box-shadow: 0 2px 15px rgba(76, 175, 80, 0.8);
+            }
+        }
     </style>
 </head>
 <body>
@@ -429,7 +467,15 @@
     <div class="header">
         <div class="status" id="status">Desconectado</div>
         <div class="player-badge" id="playerBadge" style="display: none;">P1</div>
+        <div class="audio-control">
+            <button class="audio-btn" id="audioBtn" onclick="toggleAudio()" title="Áudio do Jogo">
+                🔇
+            </button>
+        </div>
     </div>
+
+    <!-- Audio Player (oculto) -->
+    <audio id="gameAudio" autoplay style="display: none;"></audio>
 
     <!-- Controller -->
     <div class="controller-container" id="controller" style="display: none;">
@@ -499,6 +545,11 @@
         const analogStick = document.getElementById('analogStick');
         const analogKnob = document.getElementById('analogKnob');
         const toggleBtn = document.getElementById('toggleInputBtn');
+        const audioBtn = document.getElementById('audioBtn');
+        const gameAudio = document.getElementById('gameAudio');
+        let audioEnabled = false;
+        let audioContext = null;
+        let mediaSource = null;
 
         // Conectar ao servidor
         socket.on('connect', () => {
@@ -833,6 +884,58 @@
                 btn.style.display = 'block';
             }
         });
+
+        // Toggle Audio
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            
+            if (audioEnabled) {
+                audioBtn.textContent = '🔊';
+                audioBtn.classList.add('active');
+                socket.emit('enable-audio', { player: playerNumber });
+                
+                // Vibrar confirmação
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            } else {
+                audioBtn.textContent = '🔇';
+                audioBtn.classList.remove('active');
+                socket.emit('disable-audio', { player: playerNumber });
+                
+                // Parar áudio
+                if (gameAudio.srcObject) {
+                    gameAudio.srcObject.getTracks().forEach(track => track.stop());
+                    gameAudio.srcObject = null;
+                }
+            }
+        }
+
+        // Receber stream de áudio do servidor
+        socket.on('audio-stream', (audioData) => {
+            if (!audioEnabled) return;
+            
+            try {
+                // Converter base64 para blob e reproduzir
+                const audioBlob = base64ToBlob(audioData, 'audio/webm');
+                const audioUrl = URL.createObjectURL(audioBlob);
+                gameAudio.src = audioUrl;
+                gameAudio.play().catch(err => console.log('Audio play error:', err));
+            } catch (error) {
+                console.error('Erro ao reproduzir áudio:', error);
+            }
+        });
+
+        // Converter base64 para Blob
+        function base64ToBlob(base64, type) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: type });
+        }
     </script>
 </body>
 </html>
