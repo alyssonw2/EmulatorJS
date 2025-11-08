@@ -1857,16 +1857,21 @@
                     // Método alternativo: usar captureStream da aba/janela
                     if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
                         console.log('🎤 Solicitando captura de áudio da aba...');
+                        console.log('💡 IMPORTANTE: Selecione a aba atual e marque "Compartilhar áudio da aba"');
                         
                         navigator.mediaDevices.getDisplayMedia({
                             video: false,
                             audio: {
                                 echoCancellation: false,
                                 noiseSuppression: false,
-                                sampleRate: 48000
-                            }
+                                autoGainControl: false,
+                                sampleRate: 48000,
+                                channelCount: 2
+                            },
+                            preferCurrentTab: true
                         }).then(stream => {
-                            console.log('✅ Captura de áudio da aba iniciada!');
+                            console.log('✅ Captura de áudio da aba iniciada com sucesso!');
+                            console.log('📡 Áudio do jogo será transmitido para os controles');
                             audioStream = stream;
                             
                             // Criar MediaRecorder
@@ -1897,11 +1902,22 @@
                             
                             // Iniciar gravação com chunks de 200ms
                             mediaRecorder.start(200);
-                            console.log('🎙️ MediaRecorder iniciado');
+                            console.log('🎙️ MediaRecorder iniciado - Transmitindo áudio da janela');
                             
                         }).catch(err => {
                             console.error('❌ Erro ao solicitar captura de áudio:', err);
-                            console.log('💡 Dica: Clique em "Compartilhar" e selecione a aba atual, certifique-se de marcar "Compartilhar áudio da aba"');
+                            console.log('');
+                            console.log('═══════════════════════════════════════════════════════');
+                            console.log('💡 COMO COMPARTILHAR O ÁUDIO DO JOGO:');
+                            console.log('');
+                            console.log('1. Um popup deve aparecer perguntando qual conteúdo compartilhar');
+                            console.log('2. Selecione a ABA ATUAL (onde o jogo está rodando)');
+                            console.log('3. MARQUE a opção "Compartilhar áudio da aba" ✓');
+                            console.log('4. Clique em "Compartilhar"');
+                            console.log('5. No celular, clique no botão � para ativar o áudio');
+                            console.log('');
+                            console.log('⚠️  Sem compartilhar o áudio da aba, o som NÃO será transmitido!');
+                            console.log('═══════════════════════════════════════════════════════');
                         });
                     } else {
                         console.error('❌ API getDisplayMedia não disponível neste navegador');
