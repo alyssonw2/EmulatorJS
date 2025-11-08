@@ -14,7 +14,8 @@
         "url": "https://github.com/EmulatorJS/EmulatorJS/issues"
     },
     "scripts": {
-        "start": "http-server",
+        "start": "node server.js",
+        "dev": "http-server",
         "minify": "node minify/minify.js",
         "build": "node build.js",
         "update": "node update.js",
@@ -24,8 +25,11 @@
         "@node-minify/clean-css": "^9.0.1",
         "@node-minify/core": "^9.0.2",
         "@node-minify/terser": "^9.0.1",
+        "express": "^4.21.2",
         "http-server": "^14.1.1",
-        "node-7z": "^3.0.0"
+        "node-7z": "^3.0.0",
+        "qrcode": "^1.5.4",
+        "socket.io": "^4.8.1"
     },
     "optionalDependencies": {
         "@emulatorjs/cores": "^4.2.3"
@@ -33,7 +37,6 @@
     "devDependencies": {
         "jsdoc": "^4.0.4",
         "nipplejs": "^0.10.2",
-        "node-fetch": "^3.3.2",
-        "socket.io": "^4.8.1"
+        "node-fetch": "^3.3.2"
     }
 }

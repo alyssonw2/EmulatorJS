@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Controle Virtual - Arcade Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #e8e8e8;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Forçar orientação paisagem */
+        @media screen and (orientation: portrait) {
+            body::before {
+                content: '↻ Gire o celular\Apara o modo paisagem';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(10, 10, 10, 0.98);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                font-size: 24px;
+                text-align: center;
+                white-space: pre-line;
+                color: #5b6bc0;
+                font-weight: 600;
+            }
+        }
+
+        /* Header */
+        .header {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.95);
+            border-bottom: 1px solid rgba(91, 107, 192, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            font-size: 11px;
+            font-weight: 600;
+            color: #5b6bc0;
+        }
+
+        .status.connected {
+            color: #4caf50;
+        }
+
+        .status.disconnected {
+            color: #f44336;
+        }
+
+        .player-badge {
+            padding: 4px 12px;
+            background: linear-gradient(135deg, #5b6bc0, #3f51b5);
+            border-radius: 15px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* Controller Layout - Horizontal */
+        .controller-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            grid-template-rows: 1fr;
+            align-items: center;
+            justify-items: center;
+            padding: 10px 20px;
+            gap: 10px;
+        }
+
+        /* D-Pad */
+        .dpad-container {
+            grid-column: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding-right: 20px;
+        }
+
+        .dpad {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 3px;
+        }
+
+        .dpad-btn {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.4), rgba(63, 81, 181, 0.3));
+            border: 2px solid rgba(91, 107, 192, 0.7);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.08s ease;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 2px 8px rgba(91, 107, 192, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .dpad-btn:active {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.7), rgba(63, 81, 181, 0.6));
+            border-color: rgba(91, 107, 192, 0.95);
+            transform: scale(0.92);
+            box-shadow: 0 1px 4px rgba(91, 107, 192, 0.4),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .dpad-btn.pressed {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.9), rgba(63, 81, 181, 0.8));
+            border-color: #7986cb;
+            box-shadow: 0 0 30px rgba(91, 107, 192, 0.8),
+                        0 0 15px rgba(121, 134, 203, 0.6),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Special Buttons - Centro */
+        .special-buttons {
+            grid-column: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .special-btn {
+            padding: 10px 25px;
+            background: linear-gradient(145deg, rgba(100, 100, 130, 0.4), rgba(80, 80, 110, 0.3));
+            border: 2px solid rgba(120, 120, 150, 0.7);
+            border-radius: 20px;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.08s ease;
+            touch-action: manipulation;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(100, 100, 130, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .special-btn:active {
+            background: linear-gradient(145deg, rgba(100, 100, 130, 0.6), rgba(80, 80, 110, 0.5));
+            transform: scale(0.92);
+            box-shadow: 0 1px 4px rgba(100, 100, 130, 0.4),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Action Buttons - Direita */
+        .action-buttons {
+            grid-column: 3;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding-left: 20px;
+        }
+
+        .action-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            transform: rotate(45deg);
+        }
+
+        .action-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.5), rgba(63, 81, 181, 0.4));
+            border: 3px solid rgba(91, 107, 192, 0.8);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-45deg);
+            transition: all 0.08s ease;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 3px 10px rgba(91, 107, 192, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .action-btn:active {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.8), rgba(63, 81, 181, 0.7));
+            border-color: rgba(91, 107, 192, 0.95);
+            transform: rotate(-45deg) scale(0.88);
+            box-shadow: 0 1px 5px rgba(91, 107, 192, 0.5),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-btn.pressed {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 1), rgba(63, 81, 181, 0.9));
+            border-color: #7986cb;
+            box-shadow: 0 0 35px rgba(91, 107, 192, 0.9),
+                        0 0 20px rgba(121, 134, 203, 0.7),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Fullscreen Button */
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.5), rgba(63, 81, 181, 0.4));
+            border: 2px solid rgba(91, 107, 192, 0.7);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(91, 107, 192, 0.4);
+        }
+
+        .fullscreen-btn:hover {
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.7), rgba(63, 81, 181, 0.6));
+            box-shadow: 0 3px 12px rgba(91, 107, 192, 0.6);
+        }
+
+        /* Special Buttons */
+        .special-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 0 20px;
+        }
+
+        .special-btn {
+            padding: 12px 30px;
+            background: rgba(100, 100, 120, 0.2);
+            border: 2px solid rgba(100, 100, 120, 0.4);
+            border-radius: 25px;
+            color: #dcdce2;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        .special-btn:active {
+            background: rgba(100, 100, 120, 0.4);
+            transform: scale(0.95);
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 5, 0.98);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(75, 85, 180, 0.2);
+            border-top-color: #5b6bc0;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: rgba(200, 200, 210, 0.7);
+            font-size: 14px;
+        }
+
+        /* Error */
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(244, 67, 54, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-size: 14px;
+            text-align: center;
+            z-index: 1001;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Conectando ao servidor...</div>
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-message" id="errorMessage"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="status" id="status">Desconectado</div>
+        <div class="player-badge" id="playerBadge" style="display: none;">P1</div>
+    </div>
+
+    <!-- Controller -->
+    <div class="controller-container" id="controller" style="display: none;">
+        <!-- D-Pad (Esquerda) -->
+        <div class="dpad-container">
+            <div class="dpad">
+                <div></div>
+                <div class="dpad-btn" data-key="up">▲</div>
+                <div></div>
+                <div class="dpad-btn" data-key="left">◀</div>
+                <div></div>
+                <div class="dpad-btn" data-key="right">▶</div>
+                <div></div>
+                <div class="dpad-btn" data-key="down">▼</div>
+                <div></div>
+            </div>
+        </div>
+
+        <!-- Special Buttons (Centro) -->
+        <div class="special-buttons">
+            <button class="special-btn" data-key="select">SELECT</button>
+            <button class="special-btn" data-key="start">START</button>
+        </div>
+
+        <!-- Action Buttons (Direita) -->
+        <div class="action-buttons">
+            <div class="action-group">
+                <div class="action-btn" data-key="y">Y</div>
+                <div class="action-btn" data-key="x">X</div>
+                <div class="action-btn" data-key="b">B</div>
+                <div class="action-btn" data-key="a">A</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Button -->
+    <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">🖥️ Tela Cheia</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let playerNumber = null;
+        let pressedKeys = new Set();
+
+        const loading = document.getElementById('loading');
+        const status = document.getElementById('status');
+        const playerBadge = document.getElementById('playerBadge');
+        const controller = document.getElementById('controller');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Conectar ao servidor
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor');
+            socket.emit('register-controller');
+        });
+
+        // Registrado com sucesso
+        socket.on('controller-registered', (data) => {
+            playerNumber = data.player;
+            loading.classList.add('hidden');
+            controller.style.display = 'grid'; // Mudado de flex para grid
+            status.textContent = 'Conectado';
+            status.className = 'status connected';
+            playerBadge.textContent = `P${playerNumber}`;
+            playerBadge.style.display = 'block';
+            
+            // Vibrar ao conectar
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+
+            // Tentar fullscreen automaticamente após 1 segundo
+            setTimeout(() => {
+                requestFullscreen();
+            }, 1000);
+        });
+
+        // Servidor cheio
+        socket.on('controller-full', () => {
+            loading.classList.add('hidden');
+            showError('Máximo de 2 jogadores conectados!');
+        });
+
+        // Desconectado
+        socket.on('disconnect', () => {
+            status.textContent = 'Desconectado';
+            status.className = 'status disconnected';
+            controller.style.display = 'none';
+            loading.classList.remove('hidden');
+        });
+
+        // Vibração
+        socket.on('vibrate', (data) => {
+            if (navigator.vibrate) {
+                navigator.vibrate(data.pattern || 100);
+            }
+        });
+
+        // Mostrar erro
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Enviar input
+        function sendInput(key, pressed) {
+            socket.emit('controller-input', {
+                key: key,
+                pressed: pressed,
+                timestamp: Date.now()
+            });
+        }
+
+        // Controles touch
+        const buttons = document.querySelectorAll('.dpad-btn, .action-btn, .special-btn');
+
+        buttons.forEach(btn => {
+            const key = btn.dataset.key;
+
+            // Touch start
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (!pressedKeys.has(key)) {
+                    pressedKeys.add(key);
+                    btn.classList.add('pressed');
+                    sendInput(key, true);
+                    
+                    // Vibração leve
+                    if (navigator.vibrate) {
+                        navigator.vibrate(10);
+                    }
+                }
+            });
+
+            // Touch end
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (pressedKeys.has(key)) {
+                    pressedKeys.delete(key);
+                    btn.classList.remove('pressed');
+                    sendInput(key, false);
+                }
+            });
+
+            // Mouse events (para testes)
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (!pressedKeys.has(key)) {
+                    pressedKeys.add(key);
+                    btn.classList.add('pressed');
+                    sendInput(key, true);
+                }
+            });
+
+            btn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (pressedKeys.has(key)) {
+                    pressedKeys.delete(key);
+                    btn.classList.remove('pressed');
+                    sendInput(key, false);
+                }
+            });
+        });
+
+        // Prevenir scroll
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Manter tela ligada
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(err => {
+                console.log('Wake Lock error:', err);
+            });
+        }
+
+        // Função para entrar em fullscreen
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+            } else if (elem.webkitRequestFullscreen) { // Safari
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) { // Firefox
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) { // IE/Edge
+                elem.msRequestFullscreen();
+            }
+        }
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.mozFullScreenElement && 
+                !document.msFullscreenElement) {
+                requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Ocultar botão de fullscreen quando em fullscreen
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('fullscreenBtn');
+            if (document.fullscreenElement) {
+                btn.style.display = 'none';
+            } else {
+                btn.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

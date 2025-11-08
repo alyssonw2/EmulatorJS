@@ -14,8 +14,7 @@
       "configuracoes": {
         "core": "arcade",
         "threads": false,
-        "debug": true,
-        "biosUrl": "roms/arcade/neogeo.zip"
+        "debug": true
       }
     },
     {
@@ -49,8 +48,7 @@
       "configuracoes": {
         "core": "arcade",
         "threads": false,
-        "debug": true,
-        "biosUrl": "roms/arcade/neogeo.zip"
+        "debug": true
       }
     },
     {
@@ -67,8 +65,7 @@
       "configuracoes": {
         "core": "arcade",
         "threads": false,
-        "debug": true,
-        "biosUrl": "roms/arcade/neogeo.zip"
+        "debug": true
       }
     },
     {
@@ -85,8 +82,7 @@
       "configuracoes": {
         "core": "arcade",
         "threads": false,
-        "debug": true,
-        "biosUrl": "roms/arcade/neogeo.zip"
+        "debug": true
       }
     },
     {
@@ -95,7 +91,7 @@
       "descricao": "O quinto capítulo da série traz novos desafios, chefes gigantescos e as clássicas mecânicas de gameplay que fizeram Metal Slug famoso mundialmente.",
       "arquivo": "roms/arcade/mslug5.zip",
       "imagem": "assets/covers/mslug5.jpg",
-      "video": "assets/videos/mslug5.mp4",
+      "video": "https://youtu.be/ESpPp1AFGjc",
       "plataforma": "arcade",
       "genero": "Ação / Run and Gun",
       "ano": "2003",
@@ -103,8 +99,7 @@
       "configuracoes": {
         "core": "arcade",
         "threads": false,
-        "debug": true,
-        "biosUrl": "roms/arcade/neogeo.zip"
+        "debug": true
       }
     }
   ]

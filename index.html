@@ -585,6 +585,142 @@
                     font-size: 18px;
                 }
             }
+
+            /* Controller Modal */
+            .controller-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(10, 10, 10, 0.95);
+                backdrop-filter: blur(20px);
+                z-index: 500;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .controller-modal.active {
+                display: flex;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            .modal-content {
+                background: rgba(26, 26, 26, 0.95);
+                border: 1px solid rgba(75, 85, 180, 0.3);
+                border-radius: 16px;
+                padding: 40px;
+                max-width: 500px;
+                width: 90%;
+                text-align: center;
+            }
+
+            .modal-title {
+                font-size: 24px;
+                font-weight: 700;
+                color: #e8e8e8;
+                margin-bottom: 10px;
+            }
+
+            .modal-subtitle {
+                font-size: 14px;
+                color: rgba(200, 200, 210, 0.6);
+                margin-bottom: 30px;
+            }
+
+            .qr-container {
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                display: inline-block;
+                margin-bottom: 20px;
+            }
+
+            .qr-container img {
+                display: block;
+                width: 250px;
+                height: 250px;
+            }
+
+            .controller-url {
+                font-size: 12px;
+                color: #5b6bc0;
+                margin-bottom: 25px;
+                word-break: break-all;
+                font-family: monospace;
+            }
+
+            .controller-status {
+                display: flex;
+                gap: 15px;
+                justify-content: center;
+                margin-bottom: 25px;
+            }
+
+            .player-status {
+                padding: 10px 20px;
+                background: rgba(75, 85, 180, 0.15);
+                border: 1px solid rgba(75, 85, 180, 0.3);
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(200, 200, 210, 0.7);
+            }
+
+            .player-status.connected {
+                background: rgba(76, 175, 80, 0.2);
+                border-color: rgba(76, 175, 80, 0.5);
+                color: #4caf50;
+            }
+
+            .close-modal {
+                padding: 12px 32px;
+                background: rgba(100, 100, 120, 0.15);
+                border: 1px solid rgba(100, 100, 120, 0.3);
+                border-radius: 8px;
+                color: rgba(220, 220, 230, 0.9);
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .close-modal:hover {
+                background: rgba(100, 100, 120, 0.25);
+                transform: translateY(-2px);
+            }
+
+            /* Controller Button in Header */
+            .controller-btn {
+                padding: 8px 18px;
+                background: rgba(75, 85, 180, 0.2);
+                border: 1px solid rgba(75, 85, 180, 0.35);
+                border-radius: 8px;
+                color: rgba(220, 220, 230, 0.9);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .controller-btn:hover {
+                background: rgba(75, 85, 180, 0.32);
+                border-color: rgba(75, 85, 180, 0.6);
+            }
+
+            .controller-btn::before {
+                content: '🎮';
+                font-size: 16px;
+            }
         </style>
     </head>
 
@@ -598,6 +734,7 @@
                 <div class="time" id="currentTime"></div>
             </div>
             <div class="user-info">
+                <button class="controller-btn" id="controllerBtn">Controles</button>
                 <span id="gameCount">0 JOGOS</span>
                 <div class="user-avatar">P1</div>
             </div>
@@ -634,11 +771,81 @@
             <div class="spinner"></div>
         </div>
 
+        <!-- Controller Modal -->
+        <div class="controller-modal" id="controllerModal">
+            <div class="modal-content">
+                <div class="modal-title">🎮 Controles Virtuais</div>
+                <div class="modal-subtitle">Escaneie o QR Code com seu celular</div>
+                
+                <div class="qr-container" id="qrContainer">
+                    <img id="qrCodeImage" alt="QR Code">
+                </div>
+                
+                <div class="controller-url" id="controllerURL">Carregando...</div>
+                
+                <div class="controller-status">
+                    <div class="player-status" id="player1Status">
+                        Jogador 1: Desconectado
+                    </div>
+                    <div class="player-status" id="player2Status">
+                        Jogador 2: Desconectado
+                    </div>
+                </div>
+                
+                <button class="close-modal" id="closeModal">Fechar</button>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
         <script>
+            // Proteção leve contra erros específicos do EmulatorJS
+            window.addEventListener('error', function(e) {
+                // Apenas capturar erros conhecidos e específicos
+                if (e.message && e.message.includes('Cannot read properties of null') && e.message.includes('classList')) {
+                    console.warn('⚠️ Erro handleResize capturado:', e.message);
+                    e.preventDefault();
+                    return true;
+                }
+            }, true);
+
+            window.addEventListener('unhandledrejection', function(e) {
+                console.warn('⚠️ Promise rejeitada:', e.reason);
+            });
+
             // Estado da aplicação
             let jogos = [];
             let currentIndex = 0;
             let isGameRunning = false;
+            let socket = null;
+
+            // Mapear teclas do controle virtual para EmulatorJS
+            // Player 1: z, x, a, s, enter, direções (ArrowUp/Down/Left/Right)
+            // Player 2: j, k, l, m, 1, 2, 8, 5, 4, 6
+            const keyMappingPlayer1 = {
+                'up': 'ArrowUp',
+                'down': 'ArrowDown',
+                'left': 'ArrowLeft',
+                'right': 'ArrowRight',
+                'a': 'KeyX',        // X
+                'b': 'KeyZ',        // Z
+                'x': 'KeyS',        // S
+                'y': 'KeyA',        // A
+                'start': 'Enter',   // Enter
+                'select': 'ShiftRight' // Shift
+            };
+
+            const keyMappingPlayer2 = {
+                'up': 'Digit8',     // 8
+                'down': 'Digit5',   // 5
+                'left': 'Digit4',   // 4
+                'right': 'Digit6',  // 6
+                'a': 'KeyK',        // K
+                'b': 'KeyJ',        // J
+                'x': 'KeyM',        // M
+                'y': 'KeyL',        // L
+                'start': 'Digit2',  // 2
+                'select': 'Digit1'  // 1
+            };
 
             // Elementos do DOM
             const carouselTrack = document.getElementById('carouselTrack');
@@ -649,6 +856,207 @@
             const backButton = document.getElementById('backButton');
             const mainContainer = document.getElementById('mainContainer');
             const gameCount = document.getElementById('gameCount');
+            const controllerBtn = document.getElementById('controllerBtn');
+            const controllerModal = document.getElementById('controllerModal');
+            const closeModal = document.getElementById('closeModal');
+            const qrCodeImage = document.getElementById('qrCodeImage');
+            const controllerURL = document.getElementById('controllerURL');
+            const player1Status = document.getElementById('player1Status');
+            const player2Status = document.getElementById('player2Status');
+
+            // Inicializar Socket.IO
+            function initSocket() {
+                socket = io();
+
+                socket.on('connect', () => {
+                    console.log('✅ Conectado ao servidor Socket.IO');
+                    socket.emit('register-screen');
+                });
+
+                socket.on('controller-connected', (data) => {
+                    console.log(`✅ Jogador ${data.player} conectado`);
+                    updatePlayerStatus(data.player, true);
+                });
+
+                socket.on('controller-disconnected', (data) => {
+                    console.log(`❌ Jogador ${data.player} desconectado`);
+                    updatePlayerStatus(data.player, false);
+                });
+
+                socket.on('game-input', (data) => {
+                    console.log('🎮 Recebido input:', data);
+                    handleControllerInput(data);
+                });
+
+                socket.on('controllers-status', (data) => {
+                    updatePlayerStatus(1, data.player1);
+                    updatePlayerStatus(2, data.player2);
+                });
+            }
+
+            // Atualizar status do jogador
+            function updatePlayerStatus(player, connected) {
+                const statusEl = player === 1 ? player1Status : player2Status;
+                if (connected) {
+                    statusEl.textContent = `Jogador ${player}: Conectado ✓`;
+                    statusEl.classList.add('connected');
+                } else {
+                    statusEl.textContent = `Jogador ${player}: Desconectado`;
+                    statusEl.classList.remove('connected');
+                }
+            }
+
+            // Processar input do controle
+            function handleControllerInput(data) {
+                // Selecionar o mapeamento correto baseado no jogador
+                const keyMapping = data.player === 1 ? keyMappingPlayer1 : keyMappingPlayer2;
+                const mappedKey = keyMapping[data.key];
+                if (!mappedKey) {
+                    console.warn('⚠️ Tecla não mapeada:', data.key);
+                    return;
+                }
+
+                const keyCode = getKeyCode(mappedKey);
+                const eventType = data.pressed ? 'keydown' : 'keyup';
+                
+                console.log(`🎯 P${data.player}: ${data.key} -> ${mappedKey} (keyCode: ${keyCode}) [${eventType}]`);
+
+                // Método 1: Evento KeyboardEvent moderno
+                try {
+                    const keyEvent = new KeyboardEvent(eventType, {
+                        key: getKeyName(mappedKey),
+                        code: mappedKey,
+                        keyCode: keyCode,
+                        which: keyCode,
+                        bubbles: true,
+                        cancelable: true,
+                        composed: true,
+                        view: window
+                    });
+
+                    // Disparar em múltiplos alvos
+                    const gameElement = document.getElementById('game');
+                    const canvas = gameElement?.querySelector('canvas');
+                    const iframe = gameElement?.querySelector('iframe');
+                    
+                    if (canvas) {
+                        canvas.dispatchEvent(keyEvent);
+                        console.log('📤 Evento enviado para canvas');
+                    }
+                    if (iframe) {
+                        try {
+                            iframe.contentWindow.document.dispatchEvent(keyEvent);
+                            console.log('📤 Evento enviado para iframe');
+                        } catch (e) {
+                            console.log('⚠️ Não foi possível acessar iframe');
+                        }
+                    }
+                    
+                    gameElement?.dispatchEvent(keyEvent);
+                    document.dispatchEvent(keyEvent);
+                    window.dispatchEvent(keyEvent);
+                    
+                } catch (e) {
+                    console.error('❌ Erro ao criar evento:', e);
+                }
+
+                // Método 2: Evento legado (para compatibilidade)
+                try {
+                    const event = document.createEvent('KeyboardEvent');
+                    const initMethod = typeof event.initKeyboardEvent !== 'undefined' ? 
+                        'initKeyboardEvent' : 'initKeyEvent';
+                    
+                    event[initMethod](
+                        eventType, true, true, window, 0, 0, 0, 0, keyCode, keyCode
+                    );
+                    
+                    document.dispatchEvent(event);
+                } catch (e) {
+                    // Silencioso - método alternativo
+                }
+            }
+
+            // Obter nome da tecla
+            function getKeyName(code) {
+                const keyNameMap = {
+                    'ArrowUp': 'ArrowUp',
+                    'ArrowDown': 'ArrowDown',
+                    'ArrowLeft': 'ArrowLeft',
+                    'ArrowRight': 'ArrowRight',
+                    'KeyX': 'x',
+                    'KeyZ': 'z',
+                    'KeyA': 'a',
+                    'KeyS': 's',
+                    'KeyJ': 'j',
+                    'KeyK': 'k',
+                    'KeyL': 'l',
+                    'KeyM': 'm',
+                    'Enter': 'Enter',
+                    'ShiftRight': 'Shift',
+                    'Digit1': '1',
+                    'Digit2': '2',
+                    'Digit4': '4',
+                    'Digit5': '5',
+                    'Digit6': '6',
+                    'Digit8': '8'
+                };
+                return keyNameMap[code] || code;
+            }
+
+            // Obter keyCode para compatibilidade
+            function getKeyCode(code) {
+                const keyCodeMap = {
+                    'ArrowUp': 38,
+                    'ArrowDown': 40,
+                    'ArrowLeft': 37,
+                    'ArrowRight': 39,
+                    'KeyX': 88,
+                    'KeyZ': 90,
+                    'KeyA': 65,
+                    'KeyS': 83,
+                    'KeyJ': 74,
+                    'KeyK': 75,
+                    'KeyL': 76,
+                    'KeyM': 77,
+                    'Enter': 13,
+                    'ShiftRight': 16,
+                    'Digit1': 49,
+                    'Digit2': 50,
+                    'Digit4': 52,
+                    'Digit5': 53,
+                    'Digit6': 54,
+                    'Digit8': 56
+                };
+                return keyCodeMap[code] || 0;
+            }
+
+            // Abrir modal de controles
+            controllerBtn.onclick = async () => {
+                controllerModal.classList.add('active');
+                
+                // Carregar QR Code
+                try {
+                    const response = await fetch('/qrcode');
+                    const data = await response.json();
+                    qrCodeImage.src = data.qrcode;
+                    controllerURL.textContent = data.url;
+                } catch (error) {
+                    console.error('Erro ao carregar QR Code:', error);
+                    controllerURL.textContent = 'Erro ao gerar QR Code';
+                }
+            };
+
+            // Fechar modal
+            closeModal.onclick = () => {
+                controllerModal.classList.remove('active');
+            };
+
+            // Fechar modal ao clicar fora
+            controllerModal.onclick = (e) => {
+                if (e.target === controllerModal) {
+                    controllerModal.classList.remove('active');
+                }
+            };
 
             // Atualizar relógio
             function updateTime() {
@@ -836,6 +1244,23 @@ ${jogo.descricao}
                 const gameDiv = document.getElementById('game');
                 gameDiv.innerHTML = '';
 
+                // Limpar variáveis globais do EmulatorJS para evitar redeclarações
+                if (window.EJS_emulator) {
+                    try {
+                        window.EJS_emulator.destroy?.();
+                    } catch (e) {
+                        console.warn('Erro ao destruir emulador:', e);
+                    }
+                }
+                
+                // Limpar variáveis globais
+                delete window.EmulatorJS;
+                delete window.EJS_STORAGE;
+                delete window.GamepadHandler;
+                delete window.EJS_GameManager;
+                delete window.EJSCompression;
+                delete window.EJS_emulator;
+
                 // Configurar EmulatorJS
                 window.EJS_player = "#game";
                 window.EJS_gameName = jogo.nome;
@@ -848,15 +1273,53 @@ ${jogo.descricao}
                 window.EJS_disableDatabases = true;
                 window.EJS_threads = jogo.configuracoes.threads;
 
-                // Remover script anterior se existir
-                const oldScript = document.querySelector('script[src="data/loader.js"]');
-                if (oldScript) {
-                    oldScript.remove();
-                }
+                console.log('🎮 Configuração EmulatorJS:', {
+                    player: window.EJS_player,
+                    game: window.EJS_gameName,
+                    gameUrl: window.EJS_gameUrl,
+                    core: window.EJS_core,
+                    biosUrl: window.EJS_biosUrl
+                });
+
+                // Remover scripts antigos do EmulatorJS
+                const oldScripts = document.querySelectorAll('script[src^="data/"]');
+                oldScripts.forEach(script => {
+                    script.remove();
+                    console.log('🗑️ Script removido:', script.src);
+                });
 
                 // Carregar EmulatorJS
                 const script = document.createElement('script');
                 script.src = "data/loader.js";
+                script.onload = function() {
+                    console.log('✅ EmulatorJS loader.js carregado');
+                    
+                    // Patch leve para handleResize (não bloqueia carregamento)
+                    setTimeout(() => {
+                        try {
+                            if (window.EmulatorJS && window.EmulatorJS.prototype && window.EmulatorJS.prototype.handleResize) {
+                                const originalHandleResize = window.EmulatorJS.prototype.handleResize;
+                                window.EmulatorJS.prototype.handleResize = function() {
+                                    try {
+                                        if (this.game && this.game.parentElement) {
+                                            originalHandleResize.call(this);
+                                        }
+                                    } catch (e) {
+                                        // Silencioso
+                                    }
+                                };
+                            }
+                        } catch (e) {
+                            console.log('Patch não aplicado:', e.message);
+                        }
+                    }, 1000);
+                };
+                script.onerror = function(error) {
+                    console.error('❌ Erro ao carregar EmulatorJS:', error);
+                    loading.classList.add('active');
+                    const loadingText = loading.querySelector('p');
+                    if (loadingText) loadingText.textContent = 'Erro ao carregar emulador';
+                };
                 document.body.appendChild(script);
             }
 
@@ -894,6 +1357,7 @@ ${jogo.descricao}
             });
 
             // Inicializar
+            initSocket();
             loadGames();
         </script>
     </body>
