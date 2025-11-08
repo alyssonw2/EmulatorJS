@@ -101,6 +101,7 @@
             justify-content: flex-end;
             align-items: center;
             padding-right: 20px;
+            position: relative;
         }
 
         .dpad {
@@ -111,6 +112,81 @@
             grid-template-columns: 1fr 1fr 1fr;
             grid-template-rows: 1fr 1fr 1fr;
             gap: 3px;
+        }
+
+        .dpad.hidden {
+            display: none;
+        }
+
+        /* Analógico Virtual */
+        .analog-stick {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            display: none;
+        }
+
+        .analog-stick.active {
+            display: block;
+        }
+
+        .analog-base {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.3), rgba(63, 81, 181, 0.2));
+            border: 3px solid rgba(91, 107, 192, 0.6);
+            position: relative;
+            box-shadow: 0 2px 10px rgba(91, 107, 192, 0.4),
+                        inset 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .analog-stick-knob {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(91, 107, 192, 0.8), rgba(63, 81, 181, 0.7));
+            border: 3px solid rgba(121, 134, 203, 0.9);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            touch-action: none;
+            box-shadow: 0 3px 15px rgba(91, 107, 192, 0.6),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transition: box-shadow 0.1s;
+        }
+
+        .analog-stick-knob:active {
+            box-shadow: 0 5px 20px rgba(91, 107, 192, 0.9),
+                        0 0 30px rgba(121, 134, 203, 0.7),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Botão de Alternância */
+        .toggle-input-btn {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 12px;
+            background: linear-gradient(145deg, rgba(100, 100, 130, 0.4), rgba(80, 80, 110, 0.3));
+            border: 2px solid rgba(120, 120, 150, 0.7);
+            border-radius: 15px;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 10;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(100, 100, 130, 0.3);
+            transition: all 0.2s;
+        }
+
+        .toggle-input-btn:active {
+            transform: translateX(-50%) scale(0.95);
+            box-shadow: 0 1px 3px rgba(100, 100, 130, 0.4);
         }
 
         .dpad-btn {
@@ -197,8 +273,8 @@
         }
 
         .action-btn {
-            width: 65px;
-            height: 65px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             background: linear-gradient(145deg, rgba(91, 107, 192, 0.5), rgba(63, 81, 181, 0.4));
             border: 3px solid rgba(91, 107, 192, 0.8);
@@ -359,7 +435,13 @@
     <div class="controller-container" id="controller" style="display: none;">
         <!-- D-Pad (Esquerda) -->
         <div class="dpad-container">
-            <div class="dpad">
+            <!-- Botão de Alternância -->
+            <button class="toggle-input-btn" id="toggleInputBtn" onclick="toggleInputMode()">
+                🎮 Analógico
+            </button>
+
+            <!-- D-Pad Digital -->
+            <div class="dpad" id="dpad">
                 <div></div>
                 <div class="dpad-btn" data-key="up">▲</div>
                 <div></div>
@@ -369,6 +451,13 @@
                 <div></div>
                 <div class="dpad-btn" data-key="down">▼</div>
                 <div></div>
+            </div>
+
+            <!-- Analógico Virtual -->
+            <div class="analog-stick" id="analogStick">
+                <div class="analog-base">
+                    <div class="analog-stick-knob" id="analogKnob"></div>
+                </div>
             </div>
         </div>
 
@@ -397,12 +486,19 @@
         const socket = io();
         let playerNumber = null;
         let pressedKeys = new Set();
+        let isAnalogMode = false;
+        let analogActive = false;
+        let analogInterval = null;
 
         const loading = document.getElementById('loading');
         const status = document.getElementById('status');
         const playerBadge = document.getElementById('playerBadge');
         const controller = document.getElementById('controller');
         const errorMessage = document.getElementById('errorMessage');
+        const dpad = document.getElementById('dpad');
+        const analogStick = document.getElementById('analogStick');
+        const analogKnob = document.getElementById('analogKnob');
+        const toggleBtn = document.getElementById('toggleInputBtn');
 
         // Conectar ao servidor
         socket.on('connect', () => {
@@ -469,6 +565,167 @@
                 timestamp: Date.now()
             });
         }
+
+        // Alternar entre D-Pad e Analógico
+        function toggleInputMode() {
+            isAnalogMode = !isAnalogMode;
+            
+            if (isAnalogMode) {
+                dpad.classList.add('hidden');
+                analogStick.classList.add('active');
+                toggleBtn.textContent = '🕹️ D-Pad';
+            } else {
+                dpad.classList.remove('hidden');
+                analogStick.classList.remove('active');
+                toggleBtn.textContent = '🎮 Analógico';
+                
+                // Liberar teclas pressionadas pelo analógico
+                releaseAllAnalogKeys();
+            }
+            
+            // Vibração de feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+
+        // Liberar todas as teclas do analógico
+        function releaseAllAnalogKeys() {
+            ['up', 'down', 'left', 'right'].forEach(key => {
+                if (pressedKeys.has(key)) {
+                    pressedKeys.delete(key);
+                    sendInput(key, false);
+                }
+            });
+        }
+
+        // Controle do Analógico Virtual
+        let analogStartX = 0;
+        let analogStartY = 0;
+        let analogCenterX = 0;
+        let analogCenterY = 0;
+
+        function setupAnalogStick() {
+            const base = analogStick.querySelector('.analog-base');
+            const knob = analogKnob;
+            
+            const maxDistance = 45; // Distância máxima do centro
+            const deadzone = 10; // Zona morta central
+
+            function handleAnalogMove(clientX, clientY) {
+                const rect = base.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                let deltaX = clientX - centerX;
+                let deltaY = clientY - centerY;
+                
+                // Calcular distância do centro
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                // Limitar ao raio máximo
+                if (distance > maxDistance) {
+                    const angle = Math.atan2(deltaY, deltaX);
+                    deltaX = Math.cos(angle) * maxDistance;
+                    deltaY = Math.sin(angle) * maxDistance;
+                }
+                
+                // Mover o knob
+                knob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+                
+                // Processar direções (com zona morta)
+                const currentUp = pressedKeys.has('up');
+                const currentDown = pressedKeys.has('down');
+                const currentLeft = pressedKeys.has('left');
+                const currentRight = pressedKeys.has('right');
+                
+                const shouldPressUp = deltaY < -deadzone;
+                const shouldPressDown = deltaY > deadzone;
+                const shouldPressLeft = deltaX < -deadzone;
+                const shouldPressRight = deltaX > deadzone;
+                
+                // Atualizar teclas baseado na posição
+                if (shouldPressUp && !currentUp) {
+                    pressedKeys.add('up');
+                    sendInput('up', true);
+                } else if (!shouldPressUp && currentUp) {
+                    pressedKeys.delete('up');
+                    sendInput('up', false);
+                }
+                
+                if (shouldPressDown && !currentDown) {
+                    pressedKeys.add('down');
+                    sendInput('down', true);
+                } else if (!shouldPressDown && currentDown) {
+                    pressedKeys.delete('down');
+                    sendInput('down', false);
+                }
+                
+                if (shouldPressLeft && !currentLeft) {
+                    pressedKeys.add('left');
+                    sendInput('left', true);
+                } else if (!shouldPressLeft && currentLeft) {
+                    pressedKeys.delete('left');
+                    sendInput('left', false);
+                }
+                
+                if (shouldPressRight && !currentRight) {
+                    pressedKeys.add('right');
+                    sendInput('right', true);
+                } else if (!shouldPressRight && currentRight) {
+                    pressedKeys.delete('right');
+                    sendInput('right', false);
+                }
+            }
+
+            function resetAnalog() {
+                knob.style.transform = 'translate(-50%, -50%)';
+                releaseAllAnalogKeys();
+            }
+
+            // Touch events
+            knob.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                analogActive = true;
+                if (navigator.vibrate) navigator.vibrate(10);
+            });
+
+            knob.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (analogActive) {
+                    const touch = e.touches[0];
+                    handleAnalogMove(touch.clientX, touch.clientY);
+                }
+            });
+
+            knob.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                analogActive = false;
+                resetAnalog();
+            });
+
+            // Mouse events (para testes no PC)
+            knob.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                analogActive = true;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (analogActive && isAnalogMode) {
+                    handleAnalogMove(e.clientX, e.clientY);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (analogActive) {
+                    analogActive = false;
+                    resetAnalog();
+                }
+            });
+        }
+
+        // Inicializar analógico
+        setupAnalogStick();
 
         // Controles touch
         const buttons = document.querySelectorAll('.dpad-btn, .action-btn, .special-btn');

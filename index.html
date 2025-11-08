@@ -160,12 +160,14 @@
                 width: 100%;
                 height: 100%;
                 opacity: 0;
-                transition: opacity 0.5s ease;
+                transition: opacity 0.8s ease-in-out;
                 overflow: hidden;
+                z-index: 1;
             }
 
             .game-background.active {
                 opacity: 1;
+                transition: opacity 1s ease-in-out;
             }
 
             .game-background::after {
@@ -176,9 +178,10 @@
                 width: 100%;
                 height: 100%;
                 background: linear-gradient(to bottom, 
-                    rgba(13,13,13,0.5) 0%, 
-                    rgba(13,13,13,0.85) 50%, 
-                    rgba(10,10,10,0.98) 100%);
+                    rgba(13,13,13,0.4) 0%, 
+                    rgba(13,13,13,0.75) 50%, 
+                    rgba(10,10,10,0.95) 100%);
+                z-index: 2;
             }
 
             .game-background img,
@@ -186,7 +189,8 @@
                 width: 100%;
                 height: 100%;
                 object-fit: cover;
-                filter: blur(20px) brightness(0.35) saturate(1.1);
+                filter: blur(15px) brightness(0.5) saturate(1.3);
+                transform: scale(1.1);
             }
 
             /* Detalhes do jogo selecionado */
@@ -721,6 +725,186 @@
                 content: '🎮';
                 font-size: 16px;
             }
+
+            /* Game Details Modal */
+            .game-details-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(10, 10, 10, 0.95);
+                backdrop-filter: blur(20px);
+                z-index: 600;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+                overflow-y: auto;
+            }
+
+            .game-details-modal.active {
+                display: flex;
+            }
+
+            .game-details-content {
+                background: linear-gradient(145deg, rgba(26, 26, 26, 0.98), rgba(20, 20, 20, 0.98));
+                border: 1px solid rgba(91, 107, 192, 0.35);
+                border-radius: 20px;
+                max-width: 900px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+                position: relative;
+                box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+            }
+
+            .game-details-header {
+                position: relative;
+                height: 300px;
+                border-radius: 20px 20px 0 0;
+                overflow: hidden;
+            }
+
+            .game-details-bg {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                filter: brightness(0.4);
+            }
+
+            .game-details-overlay {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 30px 40px;
+                background: linear-gradient(to top, rgba(10, 10, 10, 0.95), transparent);
+            }
+
+            .game-details-title {
+                font-size: 36px;
+                font-weight: 700;
+                color: #e8e8e8;
+                margin-bottom: 10px;
+                text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+            }
+
+            .game-details-meta {
+                display: flex;
+                gap: 15px;
+                flex-wrap: wrap;
+                font-size: 13px;
+            }
+
+            .meta-tag {
+                padding: 6px 14px;
+                background: rgba(91, 107, 192, 0.25);
+                border: 1px solid rgba(91, 107, 192, 0.4);
+                border-radius: 20px;
+                color: rgba(220, 220, 230, 0.9);
+                font-weight: 600;
+            }
+
+            .game-details-body {
+                padding: 40px;
+            }
+
+            .details-section {
+                margin-bottom: 35px;
+            }
+
+            .details-section-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #5b6bc0;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .details-section-content {
+                font-size: 15px;
+                line-height: 1.8;
+                color: rgba(200, 200, 210, 0.85);
+            }
+
+            .details-info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+            }
+
+            .info-item {
+                background: rgba(91, 107, 192, 0.08);
+                border: 1px solid rgba(91, 107, 192, 0.2);
+                border-radius: 12px;
+                padding: 20px;
+            }
+
+            .info-label {
+                font-size: 12px;
+                color: rgba(200, 200, 210, 0.5);
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .info-value {
+                font-size: 18px;
+                font-weight: 600;
+                color: #e8e8e8;
+            }
+
+            .game-details-actions {
+                display: flex;
+                gap: 15px;
+                padding: 30px 40px;
+                border-top: 1px solid rgba(91, 107, 192, 0.2);
+                background: rgba(15, 15, 15, 0.5);
+                border-radius: 0 0 20px 20px;
+            }
+
+            .btn-play-now {
+                flex: 1;
+                padding: 16px 32px;
+                background: linear-gradient(135deg, #5b6bc0, #3f51b5);
+                border: none;
+                border-radius: 12px;
+                color: white;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .btn-play-now:hover {
+                background: linear-gradient(135deg, #6a7bc7, #4a5fc3);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(91, 107, 192, 0.4);
+            }
+
+            .btn-close-details {
+                padding: 16px 32px;
+                background: rgba(100, 100, 120, 0.2);
+                border: 1px solid rgba(100, 100, 120, 0.4);
+                border-radius: 12px;
+                color: rgba(220, 220, 230, 0.9);
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .btn-close-details:hover {
+                background: rgba(100, 100, 120, 0.35);
+                border-color: rgba(100, 100, 120, 0.6);
+            }
         </style>
     </head>
 
@@ -796,6 +980,40 @@
             </div>
         </div>
 
+        <!-- Game Details Modal -->
+        <div class="game-details-modal" id="gameDetailsModal">
+            <div class="game-details-content">
+                <div class="game-details-header">
+                    <img class="game-details-bg" id="detailsBgImage" src="" alt="">
+                    <div class="game-details-overlay">
+                        <div class="game-details-title" id="detailsTitle">Título do Jogo</div>
+                        <div class="game-details-meta" id="detailsMeta"></div>
+                    </div>
+                </div>
+
+                <div class="game-details-body">
+                    <div class="details-section">
+                        <div class="details-section-title">📝 Descrição</div>
+                        <div class="details-section-content" id="detailsDescription"></div>
+                    </div>
+
+                    <div class="details-section">
+                        <div class="details-section-title">ℹ️ Informações</div>
+                        <div class="details-info-grid" id="detailsInfoGrid"></div>
+                    </div>
+                </div>
+
+                <div class="game-details-actions">
+                    <button class="btn-play-now" id="btnPlayNow">
+                        🎮 Jogar Agora
+                    </button>
+                    <button class="btn-close-details" id="btnCloseDetails">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <script src="/socket.io/socket.io.js"></script>
         <script>
             // Proteção leve contra erros específicos do EmulatorJS
@@ -863,6 +1081,16 @@
             const controllerURL = document.getElementById('controllerURL');
             const player1Status = document.getElementById('player1Status');
             const player2Status = document.getElementById('player2Status');
+            
+            // Elementos do modal de detalhes do jogo
+            const gameDetailsModal = document.getElementById('gameDetailsModal');
+            const detailsBgImage = document.getElementById('detailsBgImage');
+            const detailsTitle = document.getElementById('detailsTitle');
+            const detailsMeta = document.getElementById('detailsMeta');
+            const detailsDescription = document.getElementById('detailsDescription');
+            const detailsInfoGrid = document.getElementById('detailsInfoGrid');
+            const btnPlayNow = document.getElementById('btnPlayNow');
+            const btnCloseDetails = document.getElementById('btnCloseDetails');
 
             // Inicializar Socket.IO
             function initSocket() {
@@ -1203,23 +1431,75 @@
                 }
             });
 
-            // Mostrar informações
+            // Mostrar informações do jogo no modal
             function showInfo() {
                 const jogo = jogos[currentIndex];
-                alert(`
-🎮 ${jogo.nome}
-
-📅 Ano: ${jogo.ano}
-🎯 Gênero: ${jogo.genero}
-👥 Jogadores: ${jogo.jogadores}
-💿 Plataforma: ${jogo.plataforma.toUpperCase()}
-
-📝 Descrição:
-${jogo.descricao}
-
-🎮 Core: ${jogo.configuracoes.core}
-                `.trim());
+                
+                // Preencher imagem de fundo
+                detailsBgImage.src = jogo.imagem;
+                
+                // Preencher título
+                detailsTitle.textContent = jogo.nome;
+                
+                // Preencher meta tags
+                detailsMeta.innerHTML = `
+                    <span class="meta-tag">${jogo.ano}</span>
+                    <span class="meta-tag">${jogo.genero}</span>
+                    <span class="meta-tag">${jogo.plataforma.toUpperCase()}</span>
+                    <span class="meta-tag">${jogo.jogadores}</span>
+                `;
+                
+                // Preencher descrição
+                detailsDescription.textContent = jogo.descricao;
+                
+                // Preencher grade de informações
+                detailsInfoGrid.innerHTML = `
+                    <div class="info-item">
+                        <div class="info-label">Ano de Lançamento</div>
+                        <div class="info-value">${jogo.ano}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Gênero</div>
+                        <div class="info-value">${jogo.genero}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Jogadores</div>
+                        <div class="info-value">${jogo.jogadores}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Plataforma</div>
+                        <div class="info-value">${jogo.plataforma.toUpperCase()}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Core do Emulador</div>
+                        <div class="info-value">${jogo.configuracoes.core}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ROM</div>
+                        <div class="info-value">${jogo.arquivo ? jogo.arquivo.split('/').pop() : 'N/A'}</div>
+                    </div>
+                `;
+                
+                // Exibir modal
+                gameDetailsModal.classList.add('active');
             }
+            
+            // Event listeners para o modal de detalhes
+            btnPlayNow.addEventListener('click', () => {
+                gameDetailsModal.classList.remove('active');
+                playGame();
+            });
+            
+            btnCloseDetails.addEventListener('click', () => {
+                gameDetailsModal.classList.remove('active');
+            });
+            
+            // Fechar modal ao clicar fora do conteúdo
+            gameDetailsModal.addEventListener('click', (e) => {
+                if (e.target === gameDetailsModal) {
+                    gameDetailsModal.classList.remove('active');
+                }
+            });
 
             // Jogar jogo
             async function playGame() {
