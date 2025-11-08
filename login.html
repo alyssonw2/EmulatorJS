@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Arcade Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Background animado */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .background::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(91, 107, 192, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveGrid 20s linear infinite;
+        }
+
+        @keyframes moveGrid {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Container do login */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(91, 107, 192, 0.3);
+            border-radius: 20px;
+            padding: 50px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                        0 0 0 1px rgba(91, 107, 192, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+            display: block;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #5b6bc0, #3f51b5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-subtitle {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Formulário */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #b0b0b0;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(91, 107, 192, 0.2);
+            border-radius: 10px;
+            color: #e8e8e8;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: #5b6bc0;
+            background: rgba(30, 30, 30, 0.95);
+            box-shadow: 0 0 0 3px rgba(91, 107, 192, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #666;
+        }
+
+        /* Botão de login */
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #5b6bc0, #3f51b5);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(91, 107, 192, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Mensagens */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .message.success {
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(91, 107, 192, 0.2);
+            border-top-color: #5b6bc0;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Info extra */
+        .login-footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .premium-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #0d0d0d;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    
+    <div class="login-container">
+        <div class="logo">
+            <span class="logo-icon">🎮</span>
+            <div class="logo-text">ARCADE STATION</div>
+            <div class="logo-subtitle">Sistema de Autenticação</div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="username">Usuário</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    class="form-input" 
+                    placeholder="Digite seu usuário"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Senha</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="form-input" 
+                    placeholder="Digite sua senha"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                Entrar
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <div class="login-footer">
+            Arcade Station v1.0 • 2025
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const message = document.getElementById('message');
+        const loading = document.getElementById('loading');
+
+        // Verificar se já está logado
+        const currentUser = localStorage.getItem('arcadeUser');
+        if (currentUser) {
+            window.location.href = 'index.html';
+        }
+
+        // Handler do formulário
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                showMessage('Por favor, preencha todos os campos', 'error');
+                return;
+            }
+
+            // Mostrar loading
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Autenticando...';
+            loading.classList.add('show');
+            hideMessage();
+
+            try {
+                // Buscar usuários
+                const response = await fetch('usuariosmok.json');
+                const users = await response.json();
+
+                // Validar credenciais
+                const user = users.find(u => 
+                    u.usuario === username && u.senha === password
+                );
+
+                if (user) {
+                    // Login bem-sucedido
+                    const userData = {
+                        nome: user.nome,
+                        usuario: user.usuario,
+                        premium: user.premiun || false,
+                        loginTime: new Date().toISOString(),
+                        sessionId: generateSessionId()
+                    };
+
+                    // Salvar no localStorage
+                    localStorage.setItem('arcadeUser', JSON.stringify(userData));
+                    
+                    showMessage('Login realizado com sucesso! Redirecionando...', 'success');
+                    
+                    // Redirecionar após 1 segundo
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    // Credenciais inválidas
+                    showMessage('Usuário ou senha incorretos', 'error');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Entrar';
+                    loading.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Erro ao fazer login:', error);
+                showMessage('Erro ao conectar ao servidor. Tente novamente.', 'error');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
+                loading.classList.remove('show');
+            }
+        });
+
+        // Gerar ID de sessão único
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Mostrar mensagem
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type} show`;
+        }
+
+        // Esconder mensagem
+        function hideMessage() {
+            message.classList.remove('show');
+        }
+
+        // Limpar mensagem ao digitar
+        usernameInput.addEventListener('input', hideMessage);
+        passwordInput.addEventListener('input', hideMessage);
+
+        // Focus no primeiro campo
+        usernameInput.focus();
+    </script>
+</body>
+</html>

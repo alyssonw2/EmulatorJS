@@ -920,7 +920,7 @@
             <div class="user-info">
                 <button class="controller-btn" id="controllerBtn">Controles</button>
                 <span id="gameCount">0 JOGOS</span>
-                <div class="user-avatar">P1</div>
+                <div class="user-avatar" id="userAvatar" title="Clique para sair">P1</div>
             </div>
         </div>
 
@@ -976,6 +976,12 @@
                     </div>
                 </div>
                 
+                <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn btn-secondary" id="testAudioBtn" style="padding: 8px 16px;">
+                        🔊 Testar Áudio
+                    </button>
+                </div>
+                
                 <button class="close-modal" id="closeModal">Fechar</button>
             </div>
         </div>
@@ -1016,11 +1022,32 @@
 
         <script src="/socket.io/socket.io.js"></script>
         <script>
+            // Verificar autenticação
+            const userData = localStorage.getItem('arcadeUser');
+            if (!userData) {
+                // Redirecionar para login se não estiver autenticado
+                window.location.href = 'login.html';
+            }
+
+            // Parse dos dados do usuário
+            let currentUser = null;
+            try {
+                currentUser = JSON.parse(userData);
+                console.log('👤 Usuário logado:', currentUser.nome, currentUser.premium ? '⭐ PREMIUM' : '');
+            } catch (error) {
+                console.error('Erro ao carregar dados do usuário:', error);
+                localStorage.removeItem('arcadeUser');
+                window.location.href = 'login.html';
+            }
+
             // Proteção leve contra erros específicos do EmulatorJS
             window.addEventListener('error', function(e) {
                 // Apenas capturar erros conhecidos e específicos
-                if (e.message && e.message.includes('Cannot read properties of null') && e.message.includes('classList')) {
-                    console.warn('⚠️ Erro handleResize capturado:', e.message);
+                if (e.message && (
+                    (e.message.includes('Cannot read properties of null') && e.message.includes('classList')) ||
+                    e.message.includes('Could not get screen dimensions')
+                )) {
+                    console.warn('⚠️ Erro EmulatorJS capturado e ignorado:', e.message);
                     e.preventDefault();
                     return true;
                 }
@@ -1081,6 +1108,28 @@
             const controllerURL = document.getElementById('controllerURL');
             const player1Status = document.getElementById('player1Status');
             const player2Status = document.getElementById('player2Status');
+            const userAvatar = document.getElementById('userAvatar');
+            
+            // Atualizar informações do usuário no header
+            if (currentUser) {
+                const initials = currentUser.nome.substring(0, 2).toUpperCase();
+                userAvatar.textContent = initials;
+                userAvatar.title = `${currentUser.nome} - Clique para sair`;
+                
+                if (currentUser.premium) {
+                    userAvatar.style.background = 'linear-gradient(135deg, #ffd700, #ffed4e)';
+                    userAvatar.style.color = '#0d0d0d';
+                    userAvatar.title += ' ⭐ PREMIUM';
+                }
+            }
+            
+            // Logout
+            userAvatar.addEventListener('click', () => {
+                if (confirm(`Deseja sair, ${currentUser.nome}?`)) {
+                    localStorage.removeItem('arcadeUser');
+                    window.location.href = 'login.html';
+                }
+            });
             
             // Elementos do modal de detalhes do jogo
             const gameDetailsModal = document.getElementById('gameDetailsModal');
@@ -1092,13 +1141,24 @@
             const btnPlayNow = document.getElementById('btnPlayNow');
             const btnCloseDetails = document.getElementById('btnCloseDetails');
 
-            // Inicializar Socket.IO
+            // Inicializar Socket.IO com dados do usuário
             function initSocket() {
-                socket = io();
+                socket = io({
+                    auth: {
+                        usuario: currentUser.usuario,
+                        nome: currentUser.nome,
+                        sessionId: currentUser.sessionId,
+                        premium: currentUser.premium
+                    }
+                });
 
                 socket.on('connect', () => {
                     console.log('✅ Conectado ao servidor Socket.IO');
-                    socket.emit('register-screen');
+                    socket.emit('register-screen', {
+                        usuario: currentUser.usuario,
+                        nome: currentUser.nome,
+                        sessionId: currentUser.sessionId
+                    });
                 });
 
                 socket.on('controller-connected', (data) => {
@@ -1262,12 +1322,13 @@
             controllerBtn.onclick = async () => {
                 controllerModal.classList.add('active');
                 
-                // Carregar QR Code
+                // Carregar QR Code com sessionId do usuário
                 try {
-                    const response = await fetch('/qrcode');
+                    const response = await fetch(`/qrcode?sessionId=${currentUser.sessionId}`);
                     const data = await response.json();
                     qrCodeImage.src = data.qrcode;
                     controllerURL.textContent = data.url;
+                    console.log('🔗 QR Code gerado para sessão:', data.sessionId);
                 } catch (error) {
                     console.error('Erro ao carregar QR Code:', error);
                     controllerURL.textContent = 'Erro ao gerar QR Code';
@@ -1284,6 +1345,79 @@
                 if (e.target === controllerModal) {
                     controllerModal.classList.remove('active');
                 }
+            };
+
+            // Teste de áudio
+            const testAudioBtn = document.getElementById('testAudioBtn');
+            testAudioBtn.onclick = () => {
+                console.log('🔊 Gerando áudio de teste...');
+                
+                // Criar um tom de teste usando Web Audio API
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                const destination = audioCtx.createMediaStreamDestination();
+                
+                // Configurar oscilador (tom de 440Hz - nota Lá)
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                
+                // Configurar volume
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                
+                // Conectar
+                oscillator.connect(gainNode);
+                gainNode.connect(destination);
+                gainNode.connect(audioCtx.destination); // Também tocar localmente
+                
+                // Criar MediaRecorder
+                const mediaRecorder = new MediaRecorder(destination.stream, {
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 96000
+                });
+                
+                const audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    // Combinar chunks em um único blob
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+                    
+                    // Converter para base64
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64 = reader.result.split(',')[1];
+                        
+                        // Enviar para o servidor
+                        if (socket && socket.connected) {
+                            socket.emit('test-audio', base64);
+                            console.log('✅ Áudio de teste enviado para controles');
+                            
+                            // Feedback visual
+                            testAudioBtn.textContent = '✅ Enviado!';
+                            setTimeout(() => {
+                                testAudioBtn.textContent = '🔊 Testar Áudio';
+                            }, 2000);
+                        }
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+                
+                // Iniciar gravação
+                mediaRecorder.start();
+                
+                // Tocar por 1 segundo
+                oscillator.start();
+                setTimeout(() => {
+                    oscillator.stop();
+                    mediaRecorder.stop();
+                    audioCtx.close();
+                }, 1000);
             };
 
             // Atualizar relógio
@@ -1574,6 +1708,14 @@
                 script.onload = function() {
                     console.log('✅ EmulatorJS loader.js carregado');
                     
+                    // Patch para evitar erro de dimensões da tela
+                    window.addEventListener('error', (e) => {
+                        if (e.message && e.message.includes('Could not get screen dimensions')) {
+                            e.preventDefault();
+                            console.log('⚠️ Erro de dimensões da tela ignorado');
+                        }
+                    });
+                    
                     // Iniciar captura de áudio após carregar o emulador
                     setTimeout(() => {
                         startAudioCapture();
@@ -1592,6 +1734,13 @@
                                     } catch (e) {
                                         // Silencioso
                                     }
+                                };
+                            }
+                            
+                            // Patch para Module._emscripten_get_screen_dimensions
+                            if (window.Module) {
+                                window.Module._emscripten_get_screen_dimensions = function() {
+                                    return [window.innerWidth || 1920, window.innerHeight || 1080];
                                 };
                             }
                         } catch (e) {
@@ -1639,37 +1788,98 @@
             let audioContext = null;
             let audioProcessor = null;
             let mediaRecorder = null;
+            let audioDestination = null;
 
             function startAudioCapture() {
                 try {
-                    // Tentar capturar áudio do canvas/iframe do emulador
-                    const gameElement = document.querySelector('#game canvas, #game iframe');
+                    console.log('🎵 Iniciando captura de áudio do EmulatorJS...');
                     
-                    if (!gameElement) {
-                        console.log('⚠️ Elemento de jogo não encontrado para áudio');
-                        // Tentar novamente após 2 segundos
-                        setTimeout(startAudioCapture, 2000);
-                        return;
-                    }
+                    // Aguardar o EmulatorJS criar o AudioContext
+                    const checkEmulatorAudio = () => {
+                        // Procurar pelo AudioContext do EmulatorJS
+                        if (window.EJS_emulator && window.EJS_emulator.audioContext) {
+                            console.log('✅ AudioContext do EmulatorJS encontrado!');
+                            captureFromEmulatorContext(window.EJS_emulator.audioContext);
+                            return;
+                        }
+                        
+                        // Tentar encontrar qualquer AudioContext ativo
+                        const contexts = [];
+                        
+                        // Chrome/Edge expõem AudioContext instances
+                        if (window.webkitAudioContext && window.webkitAudioContext.prototype) {
+                            contexts.push(...Object.values(window).filter(v => v instanceof AudioContext || v instanceof webkitAudioContext));
+                        }
+                        
+                        if (contexts.length > 0) {
+                            console.log(`✅ Encontrado ${contexts.length} AudioContext(s) ativo(s)`);
+                            captureFromEmulatorContext(contexts[0]);
+                            return;
+                        }
+                        
+                        console.log('⏳ Aguardando AudioContext do EmulatorJS...');
+                        setTimeout(checkEmulatorAudio, 1000);
+                    };
+                    
+                    checkEmulatorAudio();
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao iniciar captura de áudio:', error);
+                }
+            }
 
-                    // Capturar stream de áudio do documento
-                    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-                        navigator.mediaDevices.getDisplayMedia({ 
-                            audio: true,
-                            video: false 
-                        }).then(stream => {
-                            audioStream = stream;
-                            console.log('🎵 Captura de áudio iniciada');
+            function captureFromEmulatorContext(emulatorAudioContext) {
+                try {
+                    console.log('🎯 Capturando áudio do contexto:', emulatorAudioContext);
+                    
+                    // Criar nosso próprio AudioContext para processar
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Criar destination para captura
+                    audioDestination = audioContext.createMediaStreamDestination();
+                    
+                    // Tentar conectar ao destination do emulador
+                    if (emulatorAudioContext.destination) {
+                        try {
+                            // Criar um gain node para interceptar o áudio
+                            const gainNode = emulatorAudioContext.createGain();
+                            gainNode.gain.value = 1.0;
                             
-                            // Criar MediaRecorder para capturar chunks de áudio
-                            mediaRecorder = new MediaRecorder(stream, { 
-                                mimeType: 'audio/webm',
-                                audioBitsPerSecond: 128000
-                            });
+                            // Redirecionar a saída do emulador através do nosso gain
+                            // (isso pode não funcionar devido a restrições de segurança)
+                            console.log('🔌 Tentando conectar ao destination do emulador...');
+                            
+                        } catch (err) {
+                            console.log('⚠️ Não foi possível conectar diretamente:', err.message);
+                        }
+                    }
+                    
+                    // Método alternativo: usar captureStream da aba/janela
+                    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                        console.log('🎤 Solicitando captura de áudio da aba...');
+                        
+                        navigator.mediaDevices.getDisplayMedia({
+                            video: false,
+                            audio: {
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                sampleRate: 48000
+                            }
+                        }).then(stream => {
+                            console.log('✅ Captura de áudio da aba iniciada!');
+                            audioStream = stream;
+                            
+                            // Criar MediaRecorder
+                            const options = {
+                                mimeType: 'audio/webm;codecs=opus',
+                                audioBitsPerSecond: 96000
+                            };
+                            
+                            mediaRecorder = new MediaRecorder(stream, options);
                             
                             mediaRecorder.ondataavailable = (event) => {
                                 if (event.data.size > 0) {
-                                    // Converter para base64 e enviar via socket
+                                    // Converter para base64 e enviar
                                     const reader = new FileReader();
                                     reader.onloadend = () => {
                                         const base64 = reader.result.split(',')[1];
@@ -1681,32 +1891,47 @@
                                 }
                             };
                             
-                            // Capturar chunks a cada 100ms
-                            mediaRecorder.start(100);
+                            mediaRecorder.onerror = (error) => {
+                                console.error('❌ Erro no MediaRecorder:', error);
+                            };
+                            
+                            // Iniciar gravação com chunks de 200ms
+                            mediaRecorder.start(200);
+                            console.log('🎙️ MediaRecorder iniciado');
                             
                         }).catch(err => {
-                            console.log('⚠️ Não foi possível capturar áudio:', err.message);
+                            console.error('❌ Erro ao solicitar captura de áudio:', err);
+                            console.log('💡 Dica: Clique em "Compartilhar" e selecione a aba atual, certifique-se de marcar "Compartilhar áudio da aba"');
                         });
                     } else {
-                        console.log('⚠️ API de captura de áudio não disponível');
+                        console.error('❌ API getDisplayMedia não disponível neste navegador');
                     }
+                    
                 } catch (error) {
-                    console.error('❌ Erro ao iniciar captura de áudio:', error);
+                    console.error('❌ Erro ao capturar do contexto:', error);
                 }
             }
 
+            function tryAlternativeCapture() {
+                console.log('🔄 Método de captura não implementado (não é necessário)');
+            }
+
             function stopAudioCapture() {
+                console.log('🛑 Parando captura de áudio...');
+                
                 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                     mediaRecorder.stop();
+                    mediaRecorder = null;
                 }
                 if (audioStream) {
                     audioStream.getTracks().forEach(track => track.stop());
                     audioStream = null;
                 }
-                if (audioContext) {
+                if (audioContext && audioContext.state !== 'closed') {
                     audioContext.close();
                     audioContext = null;
                 }
+                audioDestination = null;
                 console.log('🔇 Captura de áudio parada');
             }
 

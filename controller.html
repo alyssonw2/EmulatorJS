@@ -551,10 +551,16 @@
         let audioContext = null;
         let mediaSource = null;
 
+        // Pegar sessionId da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session') || 'generic';
+        console.log('📱 Controle iniciado para sessão:', sessionId);
+
         // Conectar ao servidor
         socket.on('connect', () => {
             console.log('Conectado ao servidor');
-            socket.emit('register-controller');
+            // Enviar sessionId ao registrar
+            socket.emit('register-controller', { sessionId: sessionId });
         });
 
         // Registrado com sucesso
@@ -893,6 +899,7 @@
                 audioBtn.textContent = '🔊';
                 audioBtn.classList.add('active');
                 socket.emit('enable-audio', { player: playerNumber });
+                console.log('🔊 Áudio habilitado');
                 
                 // Vibrar confirmação
                 if (navigator.vibrate) {
@@ -902,40 +909,125 @@
                 audioBtn.textContent = '🔇';
                 audioBtn.classList.remove('active');
                 socket.emit('disable-audio', { player: playerNumber });
+                console.log('🔇 Áudio desabilitado');
                 
                 // Parar áudio
-                if (gameAudio.srcObject) {
-                    gameAudio.srcObject.getTracks().forEach(track => track.stop());
-                    gameAudio.srcObject = null;
-                }
+                gameAudio.pause();
+                gameAudio.src = '';
             }
         }
+
+        // Buffer de áudio para streaming contínuo
+        let audioChunks = [];
+        let isPlayingAudio = false;
 
         // Receber stream de áudio do servidor
         socket.on('audio-stream', (audioData) => {
             if (!audioEnabled) return;
             
             try {
-                // Converter base64 para blob e reproduzir
-                const audioBlob = base64ToBlob(audioData, 'audio/webm');
+                console.log('📥 Chunk de áudio recebido:', audioData.substring(0, 50) + '...');
+                
+                // Converter base64 para blob
+                const audioBlob = base64ToBlob(audioData, 'audio/webm;codecs=opus');
                 const audioUrl = URL.createObjectURL(audioBlob);
-                gameAudio.src = audioUrl;
-                gameAudio.play().catch(err => console.log('Audio play error:', err));
+                
+                // Adicionar ao buffer
+                audioChunks.push(audioUrl);
+                
+                // Se não estiver tocando, iniciar reprodução
+                if (!isPlayingAudio && audioChunks.length > 0) {
+                    playNextChunk();
+                }
             } catch (error) {
-                console.error('Erro ao reproduzir áudio:', error);
+                console.error('❌ Erro ao processar áudio:', error);
             }
         });
 
+        // Reproduzir próximo chunk
+        function playNextChunk() {
+            if (audioChunks.length === 0) {
+                isPlayingAudio = false;
+                return;
+            }
+            
+            isPlayingAudio = true;
+            const audioUrl = audioChunks.shift();
+            
+            gameAudio.src = audioUrl;
+            gameAudio.play()
+                .then(() => {
+                    console.log('▶️ Reproduzindo áudio');
+                })
+                .catch(err => {
+                    console.error('❌ Erro ao reproduzir:', err);
+                    // Tentar próximo chunk
+                    playNextChunk();
+                });
+            
+            // Quando terminar, tocar o próximo
+            gameAudio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                playNextChunk();
+            };
+        }
+
         // Converter base64 para Blob
         function base64ToBlob(base64, type) {
-            const byteCharacters = atob(base64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            try {
+                const byteCharacters = atob(base64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                return new Blob([byteArray], { type: type });
+            } catch (error) {
+                console.error('❌ Erro ao converter base64:', error);
+                throw error;
             }
-            const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: type });
         }
+
+        // Receber e reproduzir teste de áudio
+        socket.on('test-audio-play', (audioData) => {
+            console.log('🔊 Recebendo áudio de teste...');
+            
+            try {
+                // Converter base64 para blob
+                const audioBlob = base64ToBlob(audioData, 'audio/webm;codecs=opus');
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Criar elemento de áudio temporário
+                const testAudio = new Audio(audioUrl);
+                testAudio.volume = 1.0;
+                
+                testAudio.onplay = () => {
+                    console.log('▶️ Reproduzindo teste de áudio');
+                    // Vibrar para confirmar
+                    if (navigator.vibrate) {
+                        navigator.vibrate(100);
+                    }
+                };
+                
+                testAudio.onended = () => {
+                    console.log('✅ Teste de áudio concluído');
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                testAudio.onerror = (err) => {
+                    console.error('❌ Erro ao reproduzir teste:', err);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                // Reproduzir
+                testAudio.play().catch(err => {
+                    console.error('❌ Erro ao iniciar reprodução:', err);
+                });
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar teste de áudio:', error);
+            }
+        });
     </script>
 </body>
 </html>

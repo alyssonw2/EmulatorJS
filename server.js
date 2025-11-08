@@ -21,16 +21,8 @@ const PORT = process.env.PORT || 8080;
 // Servir arquivos estáticos
 app.use(express.static(__dirname));
 
-// Gerenciar conexões de controles
-const controllers = {
-    player1: null,
-    player2: null
-};
-
-const audioListeners = {
-    player1: false,
-    player2: false
-};
+// Gerenciar conexões de controles por usuário
+const userSessions = new Map(); // sessionId -> { screen, controllers: {player1, player2}, audioListeners }
 
 const screens = new Set();
 
@@ -53,7 +45,11 @@ const controllerURL = `http://${localIP}:${PORT}/controller.html`;
 // Gerar QR Code
 app.get('/qrcode', async (req, res) => {
     try {
-        const qrCodeDataURL = await QRCode.toDataURL(controllerURL, {
+        // Pegar sessionId da query string
+        const sessionId = req.query.sessionId || 'generic';
+        const controllerURLWithSession = `http://${localIP}:${PORT}/controller.html?session=${sessionId}`;
+        
+        const qrCodeDataURL = await QRCode.toDataURL(controllerURLWithSession, {
             width: 300,
             margin: 2,
             color: {
@@ -63,8 +59,9 @@ app.get('/qrcode', async (req, res) => {
         });
         res.json({ 
             qrcode: qrCodeDataURL, 
-            url: controllerURL,
-            ip: localIP 
+            url: controllerURLWithSession,
+            ip: localIP,
+            sessionId: sessionId
         });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao gerar QR Code' });
@@ -74,107 +71,223 @@ app.get('/qrcode', async (req, res) => {
 // Socket.IO eventos
 io.on('connection', (socket) => {
     console.log(`[${new Date().toLocaleTimeString()}] Nova conexão: ${socket.id}`);
+    
+    // Dados de autenticação
+    const auth = socket.handshake.auth || {};
+    socket.userData = {
+        usuario: auth.usuario || 'guest',
+        nome: auth.nome || 'Convidado',
+        sessionId: auth.sessionId || socket.id,
+        premium: auth.premium || false
+    };
 
     // Registrar como tela (emulador)
-    socket.on('register-screen', () => {
+    socket.on('register-screen', (data) => {
+        const sessionId = data?.sessionId || socket.userData.sessionId;
+        
+        // Criar sessão se não existir
+        if (!userSessions.has(sessionId)) {
+            userSessions.set(sessionId, {
+                screen: socket.id,
+                usuario: socket.userData.usuario,
+                nome: socket.userData.nome,
+                controllers: { player1: null, player2: null },
+                audioListeners: { player1: false, player2: false }
+            });
+        } else {
+            // Atualizar screen da sessão existente
+            const session = userSessions.get(sessionId);
+            session.screen = socket.id;
+        }
+        
+        socket.sessionId = sessionId;
         screens.add(socket.id);
-        console.log(`[TELA] Registrada: ${socket.id}`);
+        
+        console.log(`[TELA] ${socket.userData.nome} (${socket.userData.usuario}) registrado - Sessão: ${sessionId}`);
         
         // Enviar status dos controles
+        const session = userSessions.get(sessionId);
         socket.emit('controllers-status', {
-            player1: controllers.player1 !== null,
-            player2: controllers.player2 !== null
+            player1: session.controllers.player1 !== null,
+            player2: session.controllers.player2 !== null
         });
     });
 
     // Registrar como controle
     socket.on('register-controller', (data) => {
+        // Usar sessionId enviado pelo controller ou procurar uma sessão disponível
+        let sessionId = data?.sessionId || null;
+        let targetSession = null;
+        
+        // Se enviou sessionId, tentar encontrar essa sessão
+        if (sessionId && userSessions.has(sessionId)) {
+            targetSession = userSessions.get(sessionId);
+            console.log(`[CONTROLE] Tentando conectar à sessão específica: ${sessionId}`);
+        } else {
+            // Procurar por uma sessão com vagas
+            console.log('[CONTROLE] Procurando sessão disponível...');
+            for (const [sid, session] of userSessions.entries()) {
+                if (!session.controllers.player1 || !session.controllers.player2) {
+                    targetSession = session;
+                    sessionId = sid;
+                    console.log(`[CONTROLE] Sessão encontrada: ${sessionId}`);
+                    break;
+                }
+            }
+        }
+        
+        // Se não encontrou nenhuma sessão, criar uma genérica
+        if (!targetSession) {
+            console.log('[CONTROLE] Nenhuma sessão encontrada, criando genérica');
+            sessionId = 'generic_' + Date.now();
+            targetSession = {
+                screen: null,
+                usuario: 'system',
+                nome: 'Sistema',
+                controllers: { player1: null, player2: null },
+                audioListeners: { player1: false, player2: false }
+            };
+            userSessions.set(sessionId, targetSession);
+        }
+        
         let playerNumber = null;
 
         // Atribuir jogador
-        if (!controllers.player1) {
-            controllers.player1 = socket.id;
+        if (!targetSession.controllers.player1) {
+            targetSession.controllers.player1 = socket.id;
             playerNumber = 1;
-        } else if (!controllers.player2) {
-            controllers.player2 = socket.id;
+        } else if (!targetSession.controllers.player2) {
+            targetSession.controllers.player2 = socket.id;
             playerNumber = 2;
         } else {
+            console.log(`[CONTROLE] Sessão ${sessionId} cheia!`);
             socket.emit('controller-full');
             return;
         }
 
         socket.playerNumber = playerNumber;
-        console.log(`[CONTROLE] Player ${playerNumber} conectado: ${socket.id}`);
+        socket.sessionId = sessionId;
+        
+        console.log(`[CONTROLE] Player ${playerNumber} conectado à sessão de ${targetSession.nome} (${sessionId}) - Socket: ${socket.id}`);
 
         // Confirmar conexão
         socket.emit('controller-registered', { 
             player: playerNumber,
-            message: `Conectado como Jogador ${playerNumber}`
+            message: `Conectado como Jogador ${playerNumber}`,
+            usuario: targetSession.nome
         });
 
-        // Notificar todas as telas
-        screens.forEach(screenId => {
-            io.to(screenId).emit('controller-connected', { player: playerNumber });
-        });
+        // Notificar a tela específica da sessão
+        if (targetSession.screen) {
+            io.to(targetSession.screen).emit('controller-connected', { player: playerNumber });
+        }
     });
 
     // Receber comandos do controle
     socket.on('controller-input', (data) => {
         const playerNumber = socket.playerNumber;
-        if (!playerNumber) return;
+        const sessionId = socket.sessionId;
+        
+        if (!playerNumber || !sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
 
-        console.log(`[INPUT] P${playerNumber}: ${data.key} ${data.pressed ? 'pressed' : 'released'}`);
+        console.log(`[INPUT] ${session.nome} P${playerNumber}: ${data.key} ${data.pressed ? 'pressed' : 'released'}`);
 
-        // Enviar para todas as telas
-        screens.forEach(screenId => {
-            io.to(screenId).emit('game-input', {
+        // Enviar apenas para a tela da sessão
+        if (session.screen) {
+            io.to(session.screen).emit('game-input', {
                 player: playerNumber,
                 ...data
             });
-        });
+        }
     });
 
     // Vibração no controle
     socket.on('vibrate-controller', (data) => {
-        if (data.player === 1 && controllers.player1) {
-            io.to(controllers.player1).emit('vibrate', data);
-        } else if (data.player === 2 && controllers.player2) {
-            io.to(controllers.player2).emit('vibrate', data);
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        if (data.player === 1 && session.controllers.player1) {
+            io.to(session.controllers.player1).emit('vibrate', data);
+        } else if (data.player === 2 && session.controllers.player2) {
+            io.to(session.controllers.player2).emit('vibrate', data);
         }
     });
 
     // Ativar áudio no controle
     socket.on('enable-audio', (data) => {
         const playerNumber = data.player;
+        const sessionId = socket.sessionId;
+        
+        if (!sessionId) return;
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
         if (playerNumber === 1) {
-            audioListeners.player1 = true;
-            console.log(`[AUDIO] Player 1 habilitou áudio`);
+            session.audioListeners.player1 = true;
+            console.log(`[AUDIO] ${session.nome} Player 1 habilitou áudio`);
         } else if (playerNumber === 2) {
-            audioListeners.player2 = true;
-            console.log(`[AUDIO] Player 2 habilitou áudio`);
+            session.audioListeners.player2 = true;
+            console.log(`[AUDIO] ${session.nome} Player 2 habilitou áudio`);
         }
     });
 
     // Desativar áudio no controle
     socket.on('disable-audio', (data) => {
         const playerNumber = data.player;
+        const sessionId = socket.sessionId;
+        
+        if (!sessionId) return;
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
         if (playerNumber === 1) {
-            audioListeners.player1 = false;
-            console.log(`[AUDIO] Player 1 desabilitou áudio`);
+            session.audioListeners.player1 = false;
+            console.log(`[AUDIO] ${session.nome} Player 1 desabilitou áudio`);
         } else if (playerNumber === 2) {
-            audioListeners.player2 = false;
-            console.log(`[AUDIO] Player 2 desabilitou áudio`);
+            session.audioListeners.player2 = false;
+            console.log(`[AUDIO] ${session.nome} Player 2 desabilitou áudio`);
         }
     });
 
     // Receber stream de áudio da tela (emulador)
     socket.on('game-audio', (audioData) => {
-        // Enviar para os controles que têm áudio habilitado
-        if (audioListeners.player1 && controllers.player1) {
-            io.to(controllers.player1).emit('audio-stream', audioData);
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        // Enviar para os controles da sessão que têm áudio habilitado
+        if (session.audioListeners.player1 && session.controllers.player1) {
+            io.to(session.controllers.player1).emit('audio-stream', audioData);
         }
-        if (audioListeners.player2 && controllers.player2) {
-            io.to(controllers.player2).emit('audio-stream', audioData);
+        if (session.audioListeners.player2 && session.controllers.player2) {
+            io.to(session.controllers.player2).emit('audio-stream', audioData);
+        }
+    });
+
+    // Teste de áudio
+    socket.on('test-audio', (audioData) => {
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        console.log(`[TEST AUDIO] Enviando áudio de teste para controles de ${session.nome}`);
+        
+        // Enviar para todos os controles da sessão
+        if (session.controllers.player1) {
+            io.to(session.controllers.player1).emit('test-audio-play', audioData);
+        }
+        if (session.controllers.player2) {
+            io.to(session.controllers.player2).emit('test-audio-play', audioData);
         }
     });
 
@@ -185,24 +298,40 @@ io.on('connection', (socket) => {
         // Remover tela
         if (screens.has(socket.id)) {
             screens.delete(socket.id);
-            console.log(`[TELA] Desconectada: ${socket.id}`);
+            console.log(`[TELA] ${socket.userData.nome} desconectado`);
         }
 
-        // Remover controle
-        if (controllers.player1 === socket.id) {
-            console.log(`[CONTROLE] Player 1 desconectado`);
-            controllers.player1 = null;
-            audioListeners.player1 = false;
-            screens.forEach(screenId => {
-                io.to(screenId).emit('controller-disconnected', { player: 1 });
-            });
-        } else if (controllers.player2 === socket.id) {
-            console.log(`[CONTROLE] Player 2 desconectado`);
-            controllers.player2 = null;
-            audioListeners.player2 = false;
-            screens.forEach(screenId => {
-                io.to(screenId).emit('controller-disconnected', { player: 2 });
-            });
+        // Remover controle da sessão
+        const sessionId = socket.sessionId;
+        if (sessionId) {
+            const session = userSessions.get(sessionId);
+            if (session) {
+                if (session.controllers.player1 === socket.id) {
+                    console.log(`[CONTROLE] ${session.nome} Player 1 desconectado`);
+                    session.controllers.player1 = null;
+                    session.audioListeners.player1 = false;
+                    
+                    // Notificar apenas a tela da sessão
+                    if (session.screen) {
+                        io.to(session.screen).emit('controller-disconnected', { player: 1 });
+                    }
+                } else if (session.controllers.player2 === socket.id) {
+                    console.log(`[CONTROLE] ${session.nome} Player 2 desconectado`);
+                    session.controllers.player2 = null;
+                    session.audioListeners.player2 = false;
+                    
+                    // Notificar apenas a tela da sessão
+                    if (session.screen) {
+                        io.to(session.screen).emit('controller-disconnected', { player: 2 });
+                    }
+                }
+                
+                // Limpar sessão se não há mais nada conectado
+                if (!session.screen && !session.controllers.player1 && !session.controllers.player2) {
+                    userSessions.delete(sessionId);
+                    console.log(`[SESSÃO] Sessão ${session.nome} removida (inativa)`);
+                }
+            }
         }
     });
 });
