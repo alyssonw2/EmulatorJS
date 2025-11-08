@@ -308,6 +308,40 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Entrar em tela cheia
+    socket.on('request-fullscreen', () => {
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        console.log(`[FULLSCREEN] ${session.nome} solicitou tela cheia`);
+        
+        // Enviar comando para a tela entrar em fullscreen
+        if (session.screen) {
+            io.to(session.screen).emit('enter-fullscreen');
+            console.log(`[FULLSCREEN] Comando enviado para tela de ${session.nome}`);
+        }
+    });
+
+    // Sair de tela cheia
+    socket.on('exit-fullscreen', () => {
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        console.log(`[FULLSCREEN] ${session.nome} solicitou sair da tela cheia`);
+        
+        // Enviar comando para a tela sair do fullscreen
+        if (session.screen) {
+            io.to(session.screen).emit('exit-fullscreen');
+            console.log(`[FULLSCREEN] Comando de saída enviado para tela de ${session.nome}`);
+        }
+    });
+
     // Desconexão
     socket.on('disconnect', () => {
         console.log(`[${new Date().toLocaleTimeString()}] Desconectado: ${socket.id}`);

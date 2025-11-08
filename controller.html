@@ -638,6 +638,7 @@
 
         <!-- Special Buttons (Centro) -->
         <div class="special-buttons">
+            <button class="special-btn" data-key="coin">🪙 FICHAS</button>
             <button class="special-btn" data-key="select">SELECT</button>
             <button class="special-btn" data-key="start">START</button>
         </div>
@@ -1019,6 +1020,17 @@
                 !document.mozFullScreenElement && 
                 !document.msFullscreenElement) {
                 requestFullscreen();
+                
+                // Enviar comando para a tela principal também entrar em fullscreen
+                if (socket && socket.connected) {
+                    socket.emit('request-fullscreen');
+                    console.log('📺 Solicitando fullscreen na tela principal');
+                    
+                    // Vibrar feedback
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
@@ -1028,6 +1040,12 @@
                     document.mozCancelFullScreen();
                 } else if (document.msExitFullscreen) {
                     document.msExitFullscreen();
+                }
+                
+                // Enviar comando para a tela principal também sair do fullscreen
+                if (socket && socket.connected) {
+                    socket.emit('exit-fullscreen');
+                    console.log('📺 Solicitando saída do fullscreen na tela principal');
                 }
             }
         }

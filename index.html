@@ -1163,7 +1163,8 @@
                 'x': 'KeyS',        // S
                 'y': 'KeyA',        // A
                 'start': 'Enter',   // Enter
-                'select': 'ShiftRight' // Shift
+                'select': 'ShiftRight', // Shift
+                'coin': 'KeyV'      // V (Inserir Ficha)
             };
 
             const keyMappingPlayer2 = {
@@ -1176,7 +1177,8 @@
                 'x': 'KeyM',        // M
                 'y': 'KeyL',        // L
                 'start': 'Digit2',  // 2
-                'select': 'Digit1'  // 1
+                'select': 'Digit1', // 1
+                'coin': 'KeyV'      // V (Inserir Ficha)
             };
 
             // Elementos do DOM
@@ -1263,6 +1265,16 @@
                 socket.on('close-game', () => {
                     console.log('🔙 Controle solicitou voltar ao menu');
                     closeGame();
+                });
+
+                socket.on('enter-fullscreen', () => {
+                    console.log('📺 Controle solicitou entrar em tela cheia');
+                    enterFullscreen();
+                });
+
+                socket.on('exit-fullscreen', () => {
+                    console.log('📺 Controle solicitou sair da tela cheia');
+                    exitFullscreen();
                 });
 
                 socket.on('game-input', (data) => {
@@ -1377,6 +1389,7 @@
                     'KeyK': 'k',
                     'KeyL': 'l',
                     'KeyM': 'm',
+                    'KeyV': 'v',
                     'Enter': 'Enter',
                     'ShiftRight': 'Shift',
                     'Digit1': '1',
@@ -1404,6 +1417,7 @@
                     'KeyK': 75,
                     'KeyL': 76,
                     'KeyM': 77,
+                    'KeyV': 86,
                     'Enter': 13,
                     'ShiftRight': 16,
                     'Digit1': 49,
@@ -1906,6 +1920,57 @@
                 selectGame(currentIndex);
                 
                 console.log('✅ Jogo fechado, voltando ao menu');
+            }
+
+            // Funções de Fullscreen
+            function enterFullscreen() {
+                const elem = document.documentElement;
+                
+                if (document.fullscreenElement || 
+                    document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || 
+                    document.msFullscreenElement) {
+                    console.log('✅ Já está em tela cheia');
+                    return;
+                }
+                
+                console.log('📺 Entrando em tela cheia...');
+                
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(err => {
+                        console.error('❌ Erro ao entrar em fullscreen:', err);
+                    });
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                } else {
+                    console.error('❌ Fullscreen não suportado');
+                }
+            }
+
+            function exitFullscreen() {
+                if (!document.fullscreenElement && 
+                    !document.webkitFullscreenElement && 
+                    !document.mozFullScreenElement && 
+                    !document.msFullscreenElement) {
+                    console.log('✅ Já está fora da tela cheia');
+                    return;
+                }
+                
+                console.log('📺 Saindo da tela cheia...');
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
             }
 
             // Captura de áudio
