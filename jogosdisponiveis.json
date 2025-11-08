@@ -1,0 +1,111 @@
+{
+  "jogos": [
+    {
+      "id": "kof97pls",
+      "nome": "The King of Fighters '97 Plus",
+      "descricao": "Um dos melhores jogos de luta da série KOF. Reúna seu time de três lutadores e enfrente equipes rivais em combates intensos e estratégicos.",
+      "arquivo": "roms/arcade/kof97pls.zip",
+      "imagem": "assets/covers/kof97pls.jpg",
+      "video": "assets/videos/kof97pls.mp4",
+      "plataforma": "arcade",
+      "genero": "Luta",
+      "ano": "1997",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true,
+        "biosUrl": "roms/arcade/neogeo.zip"
+      }
+    },
+    {
+      "id": "mortalkombatiijue",
+      "nome": "Mortal Kombat II",
+      "descricao": "O clássico jogo de luta que revolucionou os arcades. Escolha entre guerreiros mortais e execute fatalities brutais para derrotar seus oponentes.",
+      "arquivo": "roms/arcade/Mortal Kombat II (JUE) [!].zip",
+      "imagem": "assets/covers/mortalkombatiijue.jpg",
+      "video": "assets/videos/mortalkombatiijue.mp4",
+      "plataforma": "segaMD",
+      "genero": "Luta",
+      "ano": "1993",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true
+      }
+    },
+    {
+      "id": "mslug1",
+      "nome": "Metal Slug (Cópia)",
+      "descricao": "Versão duplicada do Metal Slug original. O lendário run and gun que definiu o gênero.",
+      "arquivo": "roms/arcade/mslug(1).zip",
+      "imagem": "assets/covers/mslug1.jpg",
+      "video": "assets/videos/mslug1.mp4",
+      "plataforma": "arcade",
+      "genero": "Ação / Run and Gun",
+      "ano": "1996",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true,
+        "biosUrl": "roms/arcade/neogeo.zip"
+      }
+    },
+    {
+      "id": "mslug",
+      "nome": "Metal Slug",
+      "descricao": "O lendário run and gun que definiu o gênero. Jogue como Marco ou Tarma e lute contra o exército rebelde através de cenários incríveis desenhados à mão.",
+      "arquivo": "roms/arcade/mslug.zip",
+      "imagem": "assets/covers/mslug.jpg",
+      "video": "assets/videos/mslug.mp4",
+      "plataforma": "arcade",
+      "genero": "Ação / Run and Gun",
+      "ano": "1996",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true,
+        "biosUrl": "roms/arcade/neogeo.zip"
+      }
+    },
+    {
+      "id": "mslug4",
+      "nome": "Metal Slug 4",
+      "descricao": "Continue a saga com novos personagens, armas e veículos. Enfrente uma nova ameaça terrorista em missões ao redor do mundo com gráficos ainda mais impressionantes.",
+      "arquivo": "roms/arcade/mslug4.zip",
+      "imagem": "assets/covers/mslug4.jpg",
+      "video": "assets/videos/mslug4.mp4",
+      "plataforma": "arcade",
+      "genero": "Ação / Run and Gun",
+      "ano": "2002",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true,
+        "biosUrl": "roms/arcade/neogeo.zip"
+      }
+    },
+    {
+      "id": "mslug5",
+      "nome": "Metal Slug 5",
+      "descricao": "O quinto capítulo da série traz novos desafios, chefes gigantescos e as clássicas mecânicas de gameplay que fizeram Metal Slug famoso mundialmente.",
+      "arquivo": "roms/arcade/mslug5.zip",
+      "imagem": "assets/covers/mslug5.jpg",
+      "video": "assets/videos/mslug5.mp4",
+      "plataforma": "arcade",
+      "genero": "Ação / Run and Gun",
+      "ano": "2003",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "arcade",
+        "threads": false,
+        "debug": true,
+        "biosUrl": "roms/arcade/neogeo.zip"
+      }
+    }
+  ]
+}

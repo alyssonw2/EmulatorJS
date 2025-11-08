@@ -1,0 +1,123 @@
+{
+  "jogos": [
+    {
+      "id": "exemplo_nes",
+      "nome": "Super Mario Bros (NES)",
+      "descricao": "O clássico jogo de plataforma que iniciou a franquia Mario.",
+      "arquivo": "nes/super-mario-bros.nes",
+      "imagem": "assets/covers/exemplo_nes.jpg",
+      "video": "assets/videos/exemplo_nes.mp4",
+      "plataforma": "nes",
+      "genero": "Plataforma",
+      "ano": "1985",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "nes",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_snes",
+      "nome": "Super Mario World (SNES)",
+      "descricao": "A evolução da série Mario no Super Nintendo.",
+      "arquivo": "snes/super-mario-world.smc",
+      "imagem": "assets/covers/exemplo_snes.jpg",
+      "video": "assets/videos/exemplo_snes.mp4",
+      "plataforma": "snes",
+      "genero": "Plataforma",
+      "ano": "1990",
+      "jogadores": "1",
+      "configuracoes": {
+        "core": "snes",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_gba",
+      "nome": "Pokémon FireRed (GBA)",
+      "descricao": "A versão remasterizada do clássico Pokémon Red.",
+      "arquivo": "gba/pokemon-firered.gba",
+      "imagem": "assets/covers/exemplo_gba.jpg",
+      "video": "assets/videos/exemplo_gba.mp4",
+      "plataforma": "gba",
+      "genero": "RPG",
+      "ano": "2004",
+      "jogadores": "1",
+      "configuracoes": {
+        "core": "mgba",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_n64",
+      "nome": "Super Mario 64 (N64)",
+      "descricao": "O primeiro jogo 3D da série Mario.",
+      "arquivo": "n64/super-mario-64.z64",
+      "imagem": "assets/covers/exemplo_n64.jpg",
+      "video": "assets/videos/exemplo_n64.mp4",
+      "plataforma": "n64",
+      "genero": "Plataforma 3D",
+      "ano": "1996",
+      "jogadores": "1",
+      "configuracoes": {
+        "core": "mupen64plus_next",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_genesis",
+      "nome": "Sonic the Hedgehog (Genesis)",
+      "descricao": "O jogo que tornou Sonic um ícone dos videogames.",
+      "arquivo": "genesis/sonic.md",
+      "imagem": "assets/covers/exemplo_genesis.jpg",
+      "video": "assets/videos/exemplo_genesis.mp4",
+      "plataforma": "genesis",
+      "genero": "Plataforma",
+      "ano": "1991",
+      "jogadores": "1",
+      "configuracoes": {
+        "core": "genesis_plus_gx",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_psx",
+      "nome": "Final Fantasy VII (PlayStation)",
+      "descricao": "O RPG épico que definiu uma geração.",
+      "arquivo": "psx/ff7.bin",
+      "imagem": "assets/covers/exemplo_psx.jpg",
+      "video": "assets/videos/exemplo_psx.mp4",
+      "plataforma": "psx",
+      "genero": "RPG",
+      "ano": "1997",
+      "jogadores": "1",
+      "configuracoes": {
+        "core": "mednafen_psx_hw",
+        "threads": false,
+        "debug": false
+      }
+    },
+    {
+      "id": "exemplo_arcade",
+      "nome": "Street Fighter II (Arcade)",
+      "descricao": "O revolucionário jogo de luta que mudou os arcades.",
+      "arquivo": "arcade/sf2.zip",
+      "imagem": "assets/covers/exemplo_arcade.jpg",
+      "video": "assets/videos/exemplo_arcade.mp4",
+      "plataforma": "arcade",
+      "genero": "Luta",
+      "ano": "1991",
+      "jogadores": "1-2",
+      "configuracoes": {
+        "core": "fbneo",
+        "threads": false,
+        "debug": false
+      }
+    }
+  ]
+}
