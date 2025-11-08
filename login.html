@@ -353,7 +353,12 @@
                     // Salvar no localStorage
                     localStorage.setItem('arcadeUser', JSON.stringify(userData));
                     
-                    showMessage('Login realizado com sucesso! Redirecionando...', 'success');
+                    showMessage('Login realizado com sucesso! Entrando em tela cheia...', 'success');
+                    
+                    // Entrar em tela cheia
+                    setTimeout(() => {
+                        requestFullscreen();
+                    }, 500);
                     
                     // Redirecionar após 1 segundo
                     setTimeout(() => {
@@ -389,6 +394,22 @@
         // Esconder mensagem
         function hideMessage() {
             message.classList.remove('show');
+        }
+
+        // Entrar em tela cheia
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log('Fullscreen error:', err);
+                });
+            } else if (elem.webkitRequestFullscreen) { // Safari
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) { // Firefox
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) { // IE/Edge
+                elem.msRequestFullscreen();
+            }
         }
 
         // Limpar mensagem ao digitar
