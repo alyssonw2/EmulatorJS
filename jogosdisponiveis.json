@@ -27,7 +27,7 @@
       "ano": "1993",
       "jogadores": "1-2",
       "configuracoes": {
-        "core": "arcade",
+        "core": "segaMD",
         "threads": false,
         "debug": true
       }

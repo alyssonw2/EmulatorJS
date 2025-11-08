@@ -291,6 +291,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Voltar ao menu inicial (fechar jogo)
+    socket.on('back-to-menu', () => {
+        const sessionId = socket.sessionId;
+        if (!sessionId) return;
+        
+        const session = userSessions.get(sessionId);
+        if (!session) return;
+        
+        console.log(`[MENU] ${session.nome} solicitou voltar ao menu`);
+        
+        // Enviar comando para a tela fechar o jogo
+        if (session.screen) {
+            io.to(session.screen).emit('close-game');
+            console.log(`[MENU] Comando enviado para tela de ${session.nome}`);
+        }
+    });
+
     // Desconexão
     socket.on('disconnect', () => {
         console.log(`[${new Date().toLocaleTimeString()}] Desconectado: ${socket.id}`);

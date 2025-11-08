@@ -122,6 +122,81 @@
                 letter-spacing: 0.5px;
             }
 
+            /* Indicadores de Controles */
+            .controllers-status {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-right: 10px;
+            }
+
+            .controller-indicator {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                background: rgba(30, 30, 40, 0.6);
+                border: 1px solid rgba(91, 107, 192, 0.25);
+                border-radius: 20px;
+                transition: all 0.3s ease;
+            }
+
+            .controller-indicator.connected {
+                background: rgba(40, 50, 60, 0.7);
+                border-color: rgba(76, 175, 80, 0.5);
+                box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+            }
+
+            .controller-icon {
+                font-size: 18px;
+                filter: grayscale(100%);
+                opacity: 0.5;
+                transition: all 0.3s ease;
+            }
+
+            .controller-indicator.connected .controller-icon {
+                filter: grayscale(0%);
+                opacity: 1;
+            }
+
+            .controller-status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #6b6b7b;
+                box-shadow: 0 0 5px rgba(107, 107, 123, 0.3);
+                transition: all 0.3s ease;
+            }
+
+            .controller-indicator.connected .controller-status-dot {
+                background: #4caf50;
+                box-shadow: 0 0 12px rgba(76, 175, 80, 0.8),
+                            0 0 20px rgba(76, 175, 80, 0.4);
+                animation: pulse-dot 2s infinite;
+            }
+
+            @keyframes pulse-dot {
+                0%, 100% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+                50% {
+                    transform: scale(1.2);
+                    opacity: 0.8;
+                }
+            }
+
+            .controller-label {
+                font-size: 11px;
+                font-weight: 600;
+                color: rgba(200, 200, 210, 0.6);
+                transition: all 0.3s ease;
+            }
+
+            .controller-indicator.connected .controller-label {
+                color: rgba(220, 230, 240, 0.95);
+            }
+
             .user-avatar {
                 width: 38px;
                 height: 38px;
@@ -918,6 +993,18 @@
                 <div class="time" id="currentTime"></div>
             </div>
             <div class="user-info">
+                <div class="controllers-status">
+                    <div class="controller-indicator" id="player1Indicator">
+                        <span class="controller-icon">🎮</span>
+                        <span class="controller-label">P1</span>
+                        <div class="controller-status-dot"></div>
+                    </div>
+                    <div class="controller-indicator" id="player2Indicator">
+                        <span class="controller-icon">🎮</span>
+                        <span class="controller-label">P2</span>
+                        <div class="controller-status-dot"></div>
+                    </div>
+                </div>
                 <button class="controller-btn" id="controllerBtn">Controles</button>
                 <span id="gameCount">0 JOGOS</span>
                 <div class="user-avatar" id="userAvatar" title="Clique para sair">P1</div>
@@ -1109,6 +1196,8 @@
             const player1Status = document.getElementById('player1Status');
             const player2Status = document.getElementById('player2Status');
             const userAvatar = document.getElementById('userAvatar');
+            const player1Indicator = document.getElementById('player1Indicator');
+            const player2Indicator = document.getElementById('player2Indicator');
             
             // Atualizar informações do usuário no header
             if (currentUser) {
@@ -1171,6 +1260,11 @@
                     updatePlayerStatus(data.player, false);
                 });
 
+                socket.on('close-game', () => {
+                    console.log('🔙 Controle solicitou voltar ao menu');
+                    closeGame();
+                });
+
                 socket.on('game-input', (data) => {
                     console.log('🎮 Recebido input:', data);
                     handleControllerInput(data);
@@ -1185,12 +1279,16 @@
             // Atualizar status do jogador
             function updatePlayerStatus(player, connected) {
                 const statusEl = player === 1 ? player1Status : player2Status;
+                const indicatorEl = player === 1 ? player1Indicator : player2Indicator;
+                
                 if (connected) {
                     statusEl.textContent = `Jogador ${player}: Conectado ✓`;
                     statusEl.classList.add('connected');
+                    indicatorEl.classList.add('connected');
                 } else {
                     statusEl.textContent = `Jogador ${player}: Desconectado`;
                     statusEl.classList.remove('connected');
+                    indicatorEl.classList.remove('connected');
                 }
             }
 
@@ -1781,6 +1879,33 @@
                     // Re-selecionar o jogo atual para recarregar o background
                     selectGame(currentIndex);
                 }
+            }
+
+            // Fechar jogo (sem confirmação - usado pelo controle)
+            function closeGame() {
+                console.log('🔙 Fechando jogo...');
+                isGameRunning = false;
+                display.classList.remove('active');
+                backButton.classList.remove('active');
+                mainContainer.style.display = 'block';
+                
+                // Parar captura de áudio
+                stopAudioCapture();
+                
+                // Limpar emulador
+                const gameDiv = document.getElementById('game');
+                gameDiv.innerHTML = '';
+                
+                // Remover script do loader
+                const script = document.querySelector('script[src="data/loader.js"]');
+                if (script) {
+                    script.remove();
+                }
+
+                // Re-selecionar o jogo atual para recarregar o background
+                selectGame(currentIndex);
+                
+                console.log('✅ Jogo fechado, voltando ao menu');
             }
 
             // Captura de áudio
